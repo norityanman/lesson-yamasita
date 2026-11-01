@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nail Salon Sample</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Zen+Maru+Gothic:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#F7F2EA; --bg-deep:#EDE3D4; --white:#FFFFFF; --line:#E6DCCD;
+  --text:#3F3630; --sub:#6B5E52; --accent:#7A5C3E; --accent-hover:#5A4229;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Zen Maru Gothic',sans-serif;line-height:1.8}
+a{color:var(--accent)} a:hover{color:var(--accent-hover)}
+h1,h2,h3,p{margin:0}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+.narrow{max-width:760px}
+.section{padding:88px 0}
+.stack{display:flex;flex-direction:column;gap:20px}
+.heading{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.heading .en{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;color:var(--accent)}
+.heading h2{font-size:26px;font-weight:700}
+.card{background:var(--white);border-radius:20px}
+
+/* header */
+.site-header{background:var(--white);border-bottom:1px solid var(--line)}
+.site-header .wrap{padding-top:16px;padding-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px}
+.logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:500;letter-spacing:.04em;color:var(--text);text-decoration:none}
+.site-header nav{display:flex;flex-wrap:wrap;gap:4px 20px;font-size:14px}
+.site-header nav a{text-decoration:none;padding:10px 0}
+
+/* recruit */
+#recruit{background:var(--bg-deep)}
+.recruit-box{padding:24px 28px;display:flex;flex-direction:column;gap:8px;font-size:15px}
+
+/* hero */
+.hero .wrap{padding-top:96px;padding-bottom:104px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px}
+.hero .eyebrow{font-size:13px;letter-spacing:.3em;color:var(--sub)}
+.hero h1{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:clamp(40px,7vw,68px);line-height:1.15}
+.hero .lead{font-size:17px;max-width:520px}
+
+/* button */
+.btn{display:inline-flex;align-items:center;gap:10px;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;font-size:16px;padding:16px 36px;border-radius:999px;min-height:44px}
+.btn:hover{background:var(--accent-hover);color:#fff}
+
+/* about / hours bg */
+#about,#hours{background:var(--white)}
+
+/* menu */
+.menu-list{display:flex;flex-wrap:wrap;gap:24px}
+.menu-item{flex:1 1 280px;padding:36px 32px;display:flex;flex-direction:column;gap:12px}
+.menu-item h3{font-size:20px;font-weight:700}
+.menu-item .desc{font-size:15px;color:var(--sub)}
+.menu-item .price{margin-top:8px;font-size:30px;font-weight:700;color:var(--accent)}
+.menu-item .price span{font-size:16px;font-weight:500}
+.note{font-size:13px;color:var(--sub);text-align:center}
+
+/* hours */
+.info{background:var(--bg);border-radius:20px;padding:12px 32px}
+.info-row{display:flex;flex-wrap:wrap;gap:4px 24px;padding:18px 0;border-bottom:1px solid var(--line)}
+.info-row:last-child{border-bottom:none}
+.info-row dt{flex:0 0 96px;font-weight:700}
+.info-row dd{margin:0;flex:1 1 200px}
+.center{display:flex;justify-content:center}
+
+/* footer */
+.site-footer{background:var(--text);color:var(--bg-deep)}
+.site-footer .wrap{padding-top:40px;padding-bottom:40px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.site-footer .name{font-family:'Cormorant Garamond',serif;font-size:22px}
+.site-footer small{font-size:12px}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="#top" class="logo">Nail Salon Sample</a>
+    <nav aria-label="ページ内メニュー">
+      <a href="#recruit">スタッフ募集</a>
+      <a href="#about">お店について</a>
+      <a href="#menu">メニュー</a>
+      <a href="#hours">営業時間</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section id="recruit" class="section">
+    <div class="wrap narrow stack">
+      <div class="heading"><p class="en">Recruit</p><h2>スタッフ募集</h2></div>
+      <p>一緒に働いてくださるネイリストさんを募集しています。「ネイルが好き」「やってみたいけれど経験がない」という方も大歓迎です。</p>
+      <p>技術は未経験から、ひとつずつ丁寧にお伝えします。小さなサロンなので、わからないことも気軽に聞ける環境です。</p>
+      <div class="card recruit-box">
+        <p><strong>雇用形態：</strong>[業務委託／パート など]</p>
+        <p><strong>勤務日数：</strong>[週◯日〜・相談可]</p>
+        <p><strong>応募方法：</strong>[Instagram の DM／メールアドレス]</p>
+      </div>
+      <p style="text-align:center;font-size:15px">まずはお話だけでも、お気軽にご連絡ください。</p>
+    </div>
+  </section>
+
+  <section id="top" class="hero">
+    <div class="wrap">
+      <p class="eyebrow">PRIVATE NAIL SALON</p>
+      <h1>Nail Salon Sample</h1>
+      <p class="lead">ひとりひとりの指先に、ていねいに向き合う<br>小さなプライベートサロンです。</p>
+      <a href="https://beauty.hotpepper.jp/" class="btn" style="margin-top:12px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+        ホットペッパーで予約する
+      </a>
+    </div>
+  </section>
+
+  <section id="about" class="section">
+    <div class="wrap narrow stack">
+      <div class="heading"><p class="en">About</p><h2>お店について</h2></div>
+      <p>Nail Salon Sample は、ネイリストがひとりで営む完全予約制のサロンです。施術中はほかのお客さまと重なることがないので、まわりを気にせず、ゆったりとお過ごしいただけます。</p>
+      <p>爪の状態やお好み、お仕事やライフスタイルをうかがいながら、毎日がすこしうれしくなるような指先をご提案します。はじめての方も、どうぞお気軽にお越しください。</p>
+    </div>
+  </section>
+
+  <section id="menu" class="section">
+    <div class="wrap stack" style="gap:40px">
+      <div class="heading"><p class="en">Menu</p><h2>メニューと料金</h2></div>
+      <div class="menu-list">
+        <div class="card menu-item">
+          <h3>ワンカラー</h3>
+          <p class="desc">お好きな色を1色で仕上げる、シンプルで上品なネイル。お仕事の日にもなじみます。</p>
+          <p class="price">5,000<span>円</span></p>
+        </div>
+        <div class="card menu-item">
+          <h3>季節のデザイン</h3>
+          <p class="desc">季節ごとに入れ替わる限定デザイン。その時期ならではの色やアートを楽しめます。</p>
+          <p class="price">7,000<span>円</span></p>
+        </div>
+      </div>
+      <p class="note">※表示価格は [税込／税別] です。</p>
+    </div>
+  </section>
+
+  <section id="hours" class="section">
+    <div class="wrap narrow stack" style="gap:32px">
+      <div class="heading"><p class="en">Information</p><h2>営業時間</h2></div>
+      <dl class="info" style="margin:0">
+        <div class="info-row"><dt>営業時間</dt><dd>10:00〜22:00</dd></div>
+        <div class="info-row"><dt>定休日</dt><dd>不定休（ホットペッパーの予約カレンダーをご確認ください）</dd></div>
+        <div class="info-row"><dt>所在地</dt><dd>[住所・最寄り駅]</dd></div>
+      </dl>
+      <div class="center">
+        <a href="https://beauty.hotpepper.jp/" class="btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+          ホットペッパーで予約する
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p class="name">Nail Salon Sample</p>
+    <small>© Nail Salon Sample</small>
+  </div>
+</footer>
+
+</body>
+</html>
