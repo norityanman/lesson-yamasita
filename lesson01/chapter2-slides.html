@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Webアプリのしくみ 第2章</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<style>
+/* Layout: a 16:9 slide stage scaled to the window (reflows to one column on phones); the 4 parts of a web app each own one color, used everywhere. */
+:root {
+  --bg: #eef1f6;
+  --paper: #ffffff;
+  --ink: #1c2333;
+  --muted: #5a6478;
+  --line: #d6dce7;
+  --soft: #f5f7fb;
+  --front: #2a66d4;  --front-bg: #e7efff;
+  --api:   #8246d0;  --api-bg:   #f1e9ff;
+  --back:  #d2620f;  --back-bg:  #fff0e3;
+  --db:    #13906a;  --db-bg:    #e2f6ee;
+  --warn:  #9a6b00;  --warn-bg:  #fff3c9;  --warn-line: #f0c64a;
+  --relax: #3f5d7a;  --relax-bg: #e8eef4;
+  --bad:   #c8364a;
+  --f-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", sans-serif;
+  --f-body: "BIZ UDPGothic", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11151d; --paper: #1a202b; --ink: #e8ecf3; --muted: #a2acbf; --line: #313a4a; --soft: #222a37;
+  --front: #7aa7ff; --front-bg: #1c2a47; --api: #b993ff; --api-bg: #2b2145;
+  --back: #ffa35c; --back-bg: #3a2616; --db: #4fd1a5; --db-bg: #15342a;
+  --warn: #ffd466; --warn-bg: #3a3014; --warn-line: #8a6d1c; --relax: #a9c3dc; --relax-bg: #213041; --bad: #ff7a8c;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #11151d; --paper: #1a202b; --ink: #e8ecf3; --muted: #a2acbf; --line: #313a4a; --soft: #222a37;
+  --front: #7aa7ff; --front-bg: #1c2a47; --api: #b993ff; --api-bg: #2b2145;
+  --back: #ffa35c; --back-bg: #3a2616; --db: #4fd1a5; --db-bg: #15342a;
+  --warn: #ffd466; --warn-bg: #3a3014; --warn-line: #8a6d1c; --relax: #a9c3dc; --relax-bg: #213041; --bad: #ff7a8c;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); line-height: 1.6; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--front); outline-offset: 2px; }
+
+.app { min-height: 100%; display: flex; flex-direction: column; gap: 10px;
+  padding-block: 10px 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.topbar b { font-family: var(--f-display); color: var(--ink); font-size: 15px; }
+.secnav { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+.secnav button { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+.secnav button[aria-current="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.progress { height: 4px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--ink); width: 0; transition: width .3s; }
+
+.stagewrap { flex: 1; display: flex; justify-content: center; align-items: flex-start; min-height: 0; }
+.stage { width: min(100%, calc((100dvh - 150px) * 16 / 9)); aspect-ratio: 16 / 9; container-type: inline-size;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; position: relative; overflow: hidden;
+  box-shadow: 0 10px 30px -18px rgba(20,30,60,.35); }
+.slide { position: absolute; inset: 0; padding: 4.2cqi 5cqi 3.6cqi; font-size: clamp(13px, 1.55cqi, 30px);
+  display: flex; flex-direction: column; gap: 1.1em; overflow: auto; }
+.slide:not(.on), .slide .note { display: none; }
+.slide.on { animation: in .28s ease both; }
+@keyframes in { from { opacity: .3; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .slide.on { animation: none; } * { transition: none !important; } }
+
+.controls { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; }
+.controls button { border: 1px solid var(--line); background: var(--paper); border-radius: 10px; padding: 7px 14px; font-size: 14px; }
+.controls .main { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 700; }
+.controls .count { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 5.5em; text-align: center; font-size: 14px; }
+.controls .ghost[aria-pressed="true"] { background: var(--warn-bg); border-color: var(--warn-line); }
+.notes { max-width: 1100px; margin: 0 auto; width: 100%; background: var(--paper); border: 1px dashed var(--line); border-radius: 12px; padding: 12px 16px; font-size: 15px; }
+.notes h3 { margin: 0 0 4px; font-size: 13px; color: var(--muted); letter-spacing: .08em; }
+.notes p { margin: .3em 0; }
+.notes ul { margin: .3em 0; padding-left: 1.2em; }
+
+/* overview grid */
+.overview { position: fixed; inset: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 94%, transparent); overflow: auto;
+  padding: calc(env(safe-area-inset-top,0px) + 20px) max(16px, env(safe-area-inset-right,0px)) 24px max(16px, env(safe-area-inset-left,0px)); }
+.overview .ohead { display: flex; justify-content: space-between; align-items: center; max-width: 1100px; margin: 0 auto 14px; }
+.overview .ohead h2 { font-family: var(--f-display); margin: 0; font-size: 20px; }
+.ogrid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.ogrid button { text-align: left; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.ogrid button small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ogrid button.cur { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+
+/* ---------- slide typography ---------- */
+.s-head { display: flex; align-items: baseline; gap: .8em; flex-wrap: wrap; }
+.sec { font-family: var(--f-display); font-weight: 700; font-size: .85em; color: var(--muted); letter-spacing: .06em; border: 1.5px solid var(--line); border-radius: 999px; padding: .05em .8em; }
+h2.t { font-family: var(--f-display); font-weight: 900; font-size: 2.05em; line-height: 1.25; margin: 0; text-wrap: balance; }
+.lead { margin: 0; color: var(--muted); font-size: 1.05em; max-width: 46em; }
+p { margin: 0; }
+.big { font-family: var(--f-display); font-weight: 700; font-size: 1.35em; line-height: 1.45; text-wrap: balance; }
+.muted { color: var(--muted); }
+.row { display: flex; gap: 1em; flex-wrap: wrap; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1em; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1em; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: .9em; }
+.grid2 > *, .grid3 > *, .grid4 > *, .row > * { min-width: 0; }
+.fill { flex: 1; }
+
+/* markers */
+.tag { display: inline-flex; align-items: center; gap: .35em; font-weight: 700; font-size: .78em; padding: .15em .7em; border-radius: 999px; white-space: nowrap; letter-spacing: .02em; }
+.tag::before { content: ""; width: .55em; height: .55em; border-radius: 50%; background: currentColor; }
+.tag.warn { background: var(--warn-bg); color: var(--warn); }
+.tag.metaphor { background: var(--soft); color: var(--ink); border: 1px solid var(--line); }
+.tag.relax { background: var(--relax-bg); color: var(--relax); }
+.box { border-radius: .7em; padding: .9em 1.1em; display: flex; flex-direction: column; gap: .45em; }
+.box.warn { background: var(--warn-bg); border: 1.5px solid var(--warn-line); }
+.box.metaphor { background: var(--soft); border: 1px solid var(--line); }
+.box.relax { background: var(--relax-bg); }
+.box h4 { margin: 0; font-size: 1.05em; font-family: var(--f-display); }
+
+/* element color helpers */
+.c-front { --c: var(--front); --cb: var(--front-bg); }
+.c-api   { --c: var(--api);   --cb: var(--api-bg); }
+.c-back  { --c: var(--back);  --cb: var(--back-bg); }
+.c-db    { --c: var(--db);    --cb: var(--db-bg); }
+.chip { display: inline-block; font-weight: 700; color: var(--c); background: var(--cb); padding: .05em .55em; border-radius: .4em; white-space: nowrap; }
+
+/* element cards */
+.el { background: var(--cb); border-radius: .8em; padding: 1em; display: flex; flex-direction: column; gap: .5em; border-top: .35em solid var(--c); }
+.el .disc { width: 3.1em; height: 3.1em; border-radius: 50%; background: var(--c); color: var(--paper); display: grid; place-items: center; font-family: var(--f-display); font-weight: 900; font-size: 1.05em; }
+.el .name { font-family: var(--f-display); font-weight: 900; font-size: 1.3em; color: var(--c); line-height: 1.2; }
+.el .is { font-weight: 700; }
+.el .is span { color: var(--muted); font-weight: 400; font-size: .85em; display: block; }
+.el p { font-size: .92em; }
+
+/* tables */
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .92em; font-variant-numeric: tabular-nums; }
+th, td { border: 1px solid var(--line); padding: .45em .7em; text-align: left; }
+th { background: var(--soft); font-weight: 700; }
+td.hl, th.hl { background: var(--warn-bg); outline: 2px solid var(--warn-line); outline-offset: -2px; }
+tr.hl td { background: var(--warn-bg); }
+
+/* buttons inside slides */
+.btn { border: 1.5px solid var(--ink); background: var(--paper); border-radius: .6em; padding: .35em .9em; font-weight: 700; font-size: .9em; }
+.btn.solid { background: var(--ink); color: var(--paper); }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+/* title slide */
+.cover { justify-content: center; gap: 1.4em; }
+.cover .kicker { font-family: var(--f-display); font-weight: 700; color: var(--muted); letter-spacing: .12em; }
+.cover h1 { font-family: var(--f-display); font-weight: 900; font-size: 3.4em; line-height: 1.15; margin: 0; text-wrap: balance; }
+.cover h1 em { font-style: normal; background: linear-gradient(transparent 62%, var(--warn-bg) 62%); }
+.cover .dots { display: flex; gap: .6em; flex-wrap: wrap; }
+
+/* flow */
+.flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.4em; position: relative; }
+.node { border: 2px solid var(--line); border-radius: .8em; padding: .8em; text-align: center; background: var(--paper); transition: all .25s; position: relative; }
+.node .disc { margin: 0 auto .3em; width: 2.8em; height: 2.8em; border-radius: 50%; background: var(--line); color: var(--paper); display: grid; place-items: center; font-family: var(--f-display); font-weight: 900; transition: background .25s; }
+.node b { display: block; font-family: var(--f-display); }
+.node small { color: var(--muted); }
+.node.on { border-color: var(--c); background: var(--cb); transform: translateY(-3px); }
+.node.on .disc { background: var(--c); }
+.node:not(:last-child)::after { content: "→"; position: absolute; right: -1.75em; top: 50%; transform: translateY(-50%); color: var(--line); font-weight: 900; font-size: 1.2em; }
+.flowtxt { display: grid; grid-template-columns: auto 1fr 1fr; gap: 1em; align-items: stretch; }
+.flowtxt .stepno { font-family: var(--f-display); font-weight: 900; font-size: 2.6em; line-height: 1; color: var(--ink); align-self: center; font-variant-numeric: tabular-nums; }
+.flowtxt .box { min-height: 5.2em; }
+.flowtxt .box small { color: var(--muted); font-weight: 700; letter-spacing: .05em; }
+.dirpill { display: inline-block; font-weight: 700; padding: .1em .7em; border-radius: 999px; font-size: .85em; }
+.dirpill.req { background: var(--front-bg); color: var(--front); }
+.dirpill.res { background: var(--db-bg); color: var(--db); }
+
+/* req / res */
+.pingpong { display: grid; grid-template-columns: 1fr 1.3fr 1fr; align-items: center; gap: 1em; }
+.pp-end { text-align: center; padding: 1em; border-radius: .8em; }
+.pp-mid { display: flex; flex-direction: column; gap: .8em; }
+.arrow { display: flex; align-items: center; gap: .5em; font-weight: 700; }
+.arrow .line { flex: 1; height: .25em; background: currentColor; border-radius: 1em; position: relative; }
+.arrow.r .line::after, .arrow.l .line::before { content: ""; position: absolute; top: 50%; border: .5em solid transparent; transform: translateY(-50%); }
+.arrow.r .line::after { right: -.6em; border-left-color: currentColor; }
+.arrow.l .line::before { left: -.6em; border-right-color: currentColor; }
+.arrow.r { color: var(--front); } .arrow.l { color: var(--db); }
+
+/* quiz cards */
+.quiz { display: grid; grid-template-columns: repeat(3, 1fr); gap: .9em; }
+.qcard { text-align: left; border: 1.5px solid var(--line); background: var(--paper); border-radius: .8em; padding: .9em 1em; display: flex; flex-direction: column; gap: .6em; min-height: 8.5em; }
+.qcard .q { font-weight: 700; font-size: 1.02em; }
+.qcard .hint { color: var(--muted); font-size: .85em; margin-top: auto; }
+.qcard .a { margin-top: auto; display: flex; flex-direction: column; gap: .3em; }
+.qcard[aria-expanded="true"] { border-color: var(--ink); }
+
+/* house */
+.house { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1em; }
+.layer { border-radius: .8em; padding: 1em; border: 1.5px solid var(--line); display: flex; flex-direction: column; gap: .4em; }
+.layer .code { font-family: var(--f-display); font-weight: 900; font-size: 1.7em; line-height: 1; }
+.layer .meta { font-weight: 700; }
+.layer p { font-size: .92em; color: var(--muted); }
+.l-html .code { color: var(--front); } .l-css .code { color: var(--api); } .l-js .code { color: var(--back); }
+.mini { height: 6.5em; border-radius: .6em; background: var(--soft); position: relative; overflow: hidden; border: 1px solid var(--line); }
+.mini .w { position: absolute; border: 2px dashed var(--muted); border-radius: .3em; }
+.l-css .mini .w { border: none; background: var(--api-bg); box-shadow: 0 .3em .8em -0.3em rgba(0,0,0,.25); border-radius: 1em; }
+.l-js .mini .w { border: none; background: var(--back-bg); }
+.l-js .mini .w.btnw { background: var(--back); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--back) 50%, transparent); } 50% { box-shadow: 0 0 0 .5em transparent; } }
+
+/* google mock */
+.gmock { border: 1px solid var(--line); border-radius: .8em; padding: 1.4em 1em; display: flex; flex-direction: column; align-items: center; gap: .6em; background: var(--soft); }
+.gmock .logo { font-family: var(--f-display); font-weight: 900; font-size: 1.8em; letter-spacing: .02em; color: var(--muted); }
+.gmock .sbox { width: 85%; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); padding: .5em 1em; box-shadow: 0 .2em .7em -.3em rgba(0,0,0,.3); color: var(--ink); font-size: .95em; }
+.gmock .sbox .cur { display: inline-block; width: 1px; height: 1em; background: var(--ink); vertical-align: middle; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.gmock .sug { width: 85%; background: var(--paper); border: 1px solid var(--line); border-radius: .6em; padding: .3em 1em; font-size: .88em; color: var(--muted); }
+.gmock .sug div { padding: .15em 0; }
+.legend3 { display: flex; flex-direction: column; gap: .7em; }
+.legend3 .li { display: grid; grid-template-columns: 6.5em 1fr; gap: .8em; align-items: center; padding: .6em .8em; border-radius: .6em; background: var(--soft); }
+.legend3 .li b { font-family: var(--f-display); }
+
+/* sentence coloring */
+.sentence { font-size: 1.35em; font-family: var(--f-display); font-weight: 700; line-height: 1.9; background: var(--soft); border-radius: .8em; padding: .8em 1.1em; }
+.sentence span { border-radius: .3em; padding: 0 .1em; transition: background .3s, color .3s; }
+.sentence.colored .s-html { background: var(--front-bg); color: var(--front); }
+.sentence.colored .s-css { background: var(--api-bg); color: var(--api); }
+.sentence.colored .s-js { background: var(--back-bg); color: var(--back); }
+
+/* steps list */
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8em; counter-reset: s; }
+.step { border-radius: .8em; background: var(--soft); padding: .9em; display: flex; flex-direction: column; gap: .4em; }
+.step .n { font-family: var(--f-display); font-weight: 900; color: var(--back); font-size: 1.4em; line-height: 1; }
+.step .k { font-weight: 700; }
+.step .b { color: var(--back); font-weight: 700; font-size: .95em; border-top: 1px dashed var(--line); padding-top: .4em; }
+
+/* receipt */
+.receipt { background: var(--paper); border: 1px solid var(--line); border-radius: .5em; padding: 1em 1.3em; font-variant-numeric: tabular-nums; max-width: 22em; box-shadow: 0 .4em 1em -.6em rgba(0,0,0,.3); }
+.receipt .r { display: flex; justify-content: space-between; padding: .2em 0; }
+.receipt .r.tot { border-top: 2px solid var(--ink); margin-top: .3em; padding-top: .4em; font-weight: 700; font-size: 1.15em; }
+
+/* jobs */
+.jobs { display: grid; grid-template-columns: repeat(2, 1fr); gap: .7em; }
+.job { display: grid; grid-template-columns: 7.5em 1fr; gap: .6em; padding: .6em .8em; border-left: .3em solid var(--back); background: var(--back-bg); border-radius: 0 .5em .5em 0; font-size: .95em; }
+.job b { font-family: var(--f-display); }
+
+/* talk bubble */
+.say { background: var(--paper); border: 1.5px solid var(--line); border-radius: 1em; padding: .7em 1em; position: relative; font-weight: 700; }
+.say.good { border-color: var(--db); }
+.say.bad { border-color: var(--bad); }
+.say small { display: block; color: var(--muted); font-weight: 700; font-size: .78em; letter-spacing: .04em; }
+
+/* relation */
+.rel { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 1em; align-items: start; }
+.rel h5 { margin: 0 0 .3em; font-size: .95em; font-family: var(--f-display); }
+.rel td.key { font-weight: 700; color: var(--front); cursor: pointer; text-decoration: underline dotted; }
+.rel td.key.p { color: var(--back); }
+
+/* git timeline */
+.timeline { display: flex; align-items: center; gap: 0; padding: 1em .5em; overflow-x: auto; }
+.tp { display: flex; flex-direction: column; align-items: center; gap: .4em; min-width: 8em; text-align: center; font-size: .9em; position: relative; }
+.tp .dot { width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--db); border: .25em solid var(--db-bg); box-shadow: 0 0 0 2px var(--db); }
+.tp.work .dot { background: var(--paper); box-shadow: 0 0 0 2px var(--muted); border-color: var(--paper); }
+.tp.broken .dot { background: var(--bad); box-shadow: 0 0 0 2px var(--bad); }
+.tp.gone { opacity: .25; }
+.tline { flex: 1; min-width: 2em; height: .2em; background: var(--line); margin-bottom: 2.4em; }
+.cloud { display: flex; align-items: center; gap: 1em; padding: .7em 1em; border: 1.5px dashed var(--line); border-radius: .8em; }
+
+/* vscode mock */
+.vsc { border: 1.5px solid var(--line); border-radius: .7em; overflow: hidden; display: grid; grid-template-columns: 2.4em 11em 1fr; grid-template-rows: 1fr 6.5em; height: 100%; min-height: 16em; font-size: .85em; background: var(--soft); }
+.vsc .bar { grid-row: 1 / 3; background: var(--line); display: flex; flex-direction: column; align-items: center; gap: .8em; padding-top: .8em; }
+.vsc .bar i { width: 1.1em; height: 1.1em; border-radius: .25em; background: var(--muted); opacity: .5; display: block; }
+.vsc .bar i.git { background: var(--db); opacity: 1; outline: 2px solid var(--db); outline-offset: 2px; }
+.vsc .files { padding: .7em; border-right: 1px solid var(--line); background: var(--paper); display: flex; flex-direction: column; gap: .2em; }
+.vsc .files div { color: var(--muted); }
+.vsc .editor { padding: .7em 1em; background: var(--paper); display: flex; flex-direction: column; gap: .3em; color: var(--muted); }
+.vsc .editor .ln { height: .55em; border-radius: .3em; background: var(--line); }
+.vsc .term { grid-column: 2 / 4; background: #161b24; color: #cfe3d6; padding: .6em 1em; font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; display: flex; flex-direction: column; gap: .15em; }
+.vsc .lbl { font-family: var(--f-body); font-weight: 700; font-size: .8em; padding: .05em .5em; border-radius: .3em; align-self: flex-start; }
+
+/* check list */
+.checks { display: flex; flex-direction: column; gap: .7em; }
+.checks label { display: flex; gap: .8em; align-items: flex-start; padding: .7em 1em; border: 1.5px solid var(--line); border-radius: .7em; cursor: pointer; font-size: 1.05em; font-weight: 700; }
+.checks input { width: 1.3em; height: 1.3em; margin-top: .15em; accent-color: var(--db); flex: none; }
+.checks label:has(input:checked) { border-color: var(--db); background: var(--db-bg); }
+.checks label span small { display: block; color: var(--muted); font-weight: 400; font-size: .85em; }
+
+/* phone */
+@media (max-width: 760px) {
+  .stage { width: 100%; aspect-ratio: auto; min-height: 70dvh; container-type: normal; }
+  .slide { position: relative; inset: auto; padding: 22px 18px; font-size: 15px; overflow: visible; }
+  .cover h1 { font-size: 2.2em; }
+  h2.t { font-size: 1.55em; }
+  .grid2, .grid3, .grid4, .quiz, .house, .steps, .jobs, .rel, .pingpong, .flowtxt { grid-template-columns: 1fr; }
+  .flow { grid-template-columns: 1fr 1fr; gap: .8em; }
+  .node:not(:last-child)::after { display: none; }
+  .vsc { grid-template-columns: 2em 7em 1fr; }
+  .secnav { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="topbar">
+    <b>第2章 Webアプリのしくみ</b>
+    <span id="secLabel"></span>
+    <nav class="secnav" id="secnav" aria-label="セクション"></nav>
+  </div>
+  <div class="progress"><i id="bar"></i></div>
+
+  <div class="stagewrap">
+  <main class="stage" id="stage">
+
+  <!-- 1 -->
+  <section class="slide cover" data-sec="はじめに" data-title="表紙">
+    <div class="kicker">第2章　Claude Code を使う前に</div>
+    <h1>Webアプリは<br><em>レストラン</em>と同じ</h1>
+    <p class="big muted" style="font-weight:500">コードは書かなくて大丈夫。<br>しくみが分かると、AIへの頼み方がうまくなります。</p>
+    <div class="dots">
+      <span class="chip c-front">客席＝フロントエンド</span>
+      <span class="chip c-api">ウェイター＝API</span>
+      <span class="chip c-back">厨房＝バックエンド</span>
+      <span class="chip c-db">食材庫＝データベース</span>
+    </div>
+    <aside class="note">
+      <p>最初に「今日はコードを書かない」「覚えることは少ない」と伝えて安心してもらう。</p>
+      <p>4つの色（青・紫・オレンジ・緑）はスライド全体で同じ意味。色で覚えてもらうと後半が楽になる。</p>
+    </aside>
+  </section>
+
+  <!-- 2 -->
+  <section class="slide" data-sec="はじめに" data-title="今日の進め方">
+    <div class="s-head"><span class="sec">はじめに</span><h2 class="t">今日の進め方とマークの見方</h2></div>
+    <div class="grid2 fill">
+      <div class="box metaphor">
+        <h4>今日の流れ（約6パート）</h4>
+        <div class="tbl"><table>
+          <tr><td>2.1</td><td>Webアプリの全体像（レストランのたとえ）</td></tr>
+          <tr><td>2.2</td><td>画面＝フロントエンド</td></tr>
+          <tr><td>2.3</td><td>裏側＝バックエンド</td></tr>
+          <tr><td>2.4</td><td>データベース</td></tr>
+          <tr><td>2.5</td><td>開発の道具（VS Code・ターミナル・Git）</td></tr>
+          <tr><td>2.6</td><td>まとめとチェックリスト</td></tr>
+        </table></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.8em">
+        <div class="box metaphor"><span class="tag metaphor">たとえ</span><p>身近なものに置きかえた説明。<b>まずはここだけ</b>分かればOK。</p></div>
+        <div class="box warn"><span class="tag warn">つまずき注意</span><p>初めての人が<b>混乱しやすいところ</b>。ゆっくり進めます。</p></div>
+        <div class="box relax"><span class="tag relax">覚えなくてOK</span><p>名前だけ聞いたことがあれば十分。<b>Claude Code がやってくれます</b>。</p></div>
+      </div>
+    </div>
+    <aside class="note">
+      <p>3つのマークを先に紹介しておくと、受講者が「ここは覚えなくていいんだ」と自分で判断できる。</p>
+      <p>操作：←→キー／スペースで移動、Oで一覧、Nでこのメモの表示切替。</p>
+    </aside>
+  </section>
+
+  <!-- 3 -->
+  <section class="slide" data-sec="2.1" data-title="Webアプリ＝レストラン">
+    <div class="s-head"><span class="sec">2.1</span><h2 class="t">Webアプリは、4つの係で動くレストラン</h2></div>
+    <div class="grid4">
+      <div class="el c-front"><div class="disc">客席</div><div class="name">フロントエンド</div><div class="is">ダイニングルーム<span>お客さんが座る場所</span></div><p>ユーザーが直接見る<b>画面・ボタン・入力欄</b></p></div>
+      <div class="el c-api"><div class="disc">給仕</div><div class="name">API</div><div class="is">ウェイター<span>注文と料理を運ぶ人</span></div><p>フロントとバックの間で<b>やり取りを仲介</b></p></div>
+      <div class="el c-back"><div class="disc">厨房</div><div class="name">バックエンド</div><div class="is">キッチン<span>お客さんからは見えない</span></div><p>ログイン・計算・メール送信などの<b>裏側の処理</b></p></div>
+      <div class="el c-db"><div class="disc">食材</div><div class="name">データベース</div><div class="is">食材庫（パントリー）<span>材料をしまっておく棚</span></div><p>ユーザー情報・商品・注文履歴を<b>保管</b></p></div>
+    </div>
+    <div class="box metaphor"><span class="tag metaphor">たとえ</span><p>お客さんは<b>客席</b>しか見ません。でも裏では、ウェイターが走り、厨房が料理し、食材庫から材料が出てきます。Webアプリも同じです。</p></div>
+    <aside class="note">
+      <p>「お店に入ったとき、見えているのはどこ？」と問いかけてから、客席＝画面とつなげる。</p>
+      <p>APIは一番イメージしにくい言葉なので、ここでは「ウェイター」とだけ言えればOK。次のスライドで動きを見せる。</p>
+    </aside>
+  </section>
+
+  <!-- 4 -->
+  <section class="slide" data-sec="2.1" data-title="注文の流れ" id="flowSlide">
+    <div class="s-head"><span class="sec">2.1</span><h2 class="t">「購入」ボタンを押すと、裏で何が起きる？</h2></div>
+    <div class="flow" id="flow">
+      <div class="node c-front" data-k="front"><div class="disc">客席</div><b>フロント</b><small>画面</small></div>
+      <div class="node c-api" data-k="api"><div class="disc">給仕</div><b>API</b><small>ウェイター</small></div>
+      <div class="node c-back" data-k="back"><div class="disc">厨房</div><b>バック</b><small>キッチン</small></div>
+      <div class="node c-db" data-k="db"><div class="disc">食材</div><b>DB</b><small>食材庫</small></div>
+    </div>
+    <div class="flowtxt">
+      <div class="stepno" id="flowNo">1</div>
+      <div class="box metaphor"><small>レストランでは</small><p id="flowR"></p></div>
+      <div class="box" style="background:var(--soft)"><small>Webアプリでは</small><p id="flowW"></p></div>
+    </div>
+    <div class="row" style="align-items:center">
+      <button class="btn" id="flowPrev" type="button">← 前のステップ</button>
+      <button class="btn solid" id="flowNext" type="button">次のステップ →</button>
+      <span class="muted" id="flowDir"></span>
+    </div>
+    <aside class="note">
+      <p>「次のステップ」ボタンを押しながら1つずつ話す。4まで行ったら「この往復が全部のWebアプリに共通」と強調。</p>
+      <p>受講者に「今どこが光ってる？」と聞くと参加感が出る。</p>
+    </aside>
+  </section>
+
+  <!-- 5 -->
+  <section class="slide" data-sec="2.1" data-title="リクエストとレスポンス">
+    <div class="s-head"><span class="sec">2.1</span><h2 class="t">「リクエスト」と「レスポンス」は、注文と料理</h2><span class="tag warn">つまずき注意</span></div>
+    <div class="pingpong">
+      <div class="pp-end c-front" style="background:var(--front-bg)"><div class="big" style="color:var(--front)">ユーザー</div><p class="muted">画面でボタンを押す人</p></div>
+      <div class="pp-mid">
+        <div class="arrow r"><span>リクエスト</span><span class="line"></span></div>
+        <p class="muted" style="text-align:center">「この商品を買いたいです」</p>
+        <div class="arrow l"><span class="line"></span><span>レスポンス</span></div>
+        <p class="muted" style="text-align:center">「購入できました」</p>
+      </div>
+      <div class="pp-end" style="background:var(--back-bg)"><div class="big" style="color:var(--back)">サーバー</div><p class="muted">バックエンドとDBがいる場所</p></div>
+    </div>
+    <div class="grid2">
+      <div class="box warn">
+        <h4>カタカナが多くて混乱しやすい</h4>
+        <p><b>リクエスト</b>＝お願い・注文（行き）<br><b>レスポンス</b>＝返事・料理（帰り）<br><b>API</b>＝それを運ぶ窓口（ウェイター）</p>
+      </div>
+      <div class="box metaphor">
+        <span class="tag metaphor">たとえ</span>
+        <p>「要求 → 処理 → 結果」の<b>往復</b>は、LINEで「今どこ？」と送って「駅だよ」と返ってくるのと同じ形です。</p>
+      </div>
+    </div>
+    <aside class="note">
+      <p>リクエスト/レスポンスは英語のままでも、日本語の「お願い/返事」に言い換えれば理解できる。</p>
+      <p>質問されやすい：「APIとバックエンドの違いは？」→ ウェイターは料理しない、運ぶだけ。料理するのは厨房（バック）。</p>
+    </aside>
+  </section>
+
+  <!-- 6 -->
+  <section class="slide" data-sec="2.1" data-title="なぜ構造を知るのか">
+    <div class="s-head"><span class="sec">2.1</span><h2 class="t">しくみを知ると「どこが悪いか」当てられる</h2></div>
+    <p class="lead">Claude Code に「ログイン機能を作って」と頼むと、4つ全部をまとめて作ってくれます。困るのは<b>うまく動かないとき</b>。カードを押して、どこが悪そうか考えてみましょう。</p>
+    <div class="quiz">
+      <button class="qcard" type="button" aria-expanded="false"><span class="q">画面にボタンが表示されない</span><span class="hint">押して答えを見る</span><span class="a" hidden><span><span class="chip c-front">フロントエンド</span></span><span class="muted">客席のテーブルが置かれていない状態</span></span></button>
+      <button class="qcard" type="button" aria-expanded="false"><span class="q">ボタンを押しても、データが保存されない</span><span class="hint">押して答えを見る</span><span class="a" hidden><span><span class="chip c-back">バックエンド</span> か <span class="chip c-db">データベース</span></span><span class="muted">注文は通ったのに、厨房か食材庫で止まっている</span></span></button>
+      <button class="qcard" type="button" aria-expanded="false"><span class="q">画面の切り替わりが遅い</span><span class="hint">押して答えを見る</span><span class="a" hidden><span><span class="chip c-front">フロント</span> / <span class="chip c-back">バック</span> / <span class="chip c-api">通信</span> のどれか</span><span class="muted">客席・厨房・ウェイターのどこが遅いか調べる</span></span></button>
+    </div>
+    <aside class="note">
+      <p>正解を当てることより「場所の候補を考える」ことが大事、と伝える。</p>
+      <p>3つ目は答えが1つに決まらない例。「分からないときは Claude Code に調べてもらえばいい」でOK。</p>
+    </aside>
+  </section>
+
+  <!-- 7 -->
+  <section class="slide" data-sec="2.2" data-title="フロントの3技術">
+    <div class="s-head"><span class="sec">2.2</span><h2 class="t">画面は3つの技術でできている</h2><span class="tag metaphor">たとえ：家づくり</span></div>
+    <div class="house">
+      <div class="layer l-html">
+        <div class="code">HTML</div><div class="meta">骨組み・間取り</div>
+        <div class="mini"><span class="w" style="left:8%;top:12%;width:84%;height:20%"></span><span class="w" style="left:8%;top:42%;width:40%;height:46%"></span><span class="w" style="left:52%;top:42%;width:40%;height:46%"></span></div>
+        <p>見出し・ボタン・画像を<b>どこに置くか</b>を決める</p>
+      </div>
+      <div class="layer l-css">
+        <div class="code">CSS</div><div class="meta">内装・デザイン</div>
+        <div class="mini"><span class="w" style="left:8%;top:12%;width:84%;height:20%"></span><span class="w" style="left:8%;top:42%;width:40%;height:46%"></span><span class="w" style="left:52%;top:42%;width:40%;height:46%"></span></div>
+        <p>色・大きさ・余白など<b>見た目</b>を整える</p>
+      </div>
+      <div class="layer l-js">
+        <div class="code">JavaScript</div><div class="meta">電気・スマートホーム</div>
+        <div class="mini"><span class="w" style="left:8%;top:12%;width:84%;height:20%"></span><span class="w" style="left:8%;top:42%;width:40%;height:46%"></span><span class="w btnw" style="left:60%;top:56%;width:26%;height:20%;border-radius:999px"></span></div>
+        <p>押したら動く・スクロールで変わる<b>動き</b>をつける</p>
+      </div>
+    </div>
+    <div class="box metaphor"><p><b>骨組み（HTML）</b>がないと内装はつけられないし、<b>電気（JS）</b>がなくても家には住めます。でも、スイッチを押して明かりがつくと便利ですよね。</p></div>
+    <aside class="note">
+      <p>3つの小さな図は同じ間取り。HTMLは点線（骨組みだけ）、CSSで色と丸み、JSでボタンが脈打つ（動く）と見せる。</p>
+      <p>「JavaScriptとJavaは別物」は聞かれたら答える程度でOK。</p>
+    </aside>
+  </section>
+
+  <!-- 8 -->
+  <section class="slide" data-sec="2.2" data-title="Google検索で見る役割分担">
+    <div class="s-head"><span class="sec">2.2</span><h2 class="t">いつもの検索ページで見てみると</h2></div>
+    <div class="grid2 fill" style="align-items:center">
+      <div class="gmock" aria-hidden="true">
+        <div class="logo">検索サイト</div>
+        <div class="sbox">ラーメン 渋<span class="cur"></span></div>
+        <div class="sug"><div>ラーメン 渋谷</div><div>ラーメン 渋谷 深夜</div><div>ラーメン 渋谷 駅近</div></div>
+      </div>
+      <div class="legend3">
+        <div class="li"><b style="color:var(--front)">HTML</b><span>検索ボックスがページの<b>真ん中にある</b></span></div>
+        <div class="li"><b style="color:var(--api)">CSS</b><span>角が<b>丸く</b>、白い背景に<b>影</b>がついている</span></div>
+        <div class="li"><b style="color:var(--back)">JavaScript</b><span>文字を打つと<b>候補がすぐ出てくる</b></span></div>
+      </div>
+    </div>
+    <aside class="note">
+      <p>可能なら実際にGoogleを開いて、文字を打って候補が出る様子を見せると一番伝わる。</p>
+      <p>「置く場所＝HTML」「見た目＝CSS」「動く＝JS」の3語だけ覚えればOK。</p>
+    </aside>
+  </section>
+
+  <!-- 9 -->
+  <section class="slide" data-sec="2.2" data-title="フレームワーク">
+    <div class="s-head"><span class="sec">2.2</span><h2 class="t">フレームワーク＝効率化の道具セット</h2><span class="tag warn">つまずき注意</span></div>
+    <div class="grid2">
+      <div class="box metaphor">
+        <span class="tag metaphor">たとえ：パスタマシン</span>
+        <p>パスタは手打ちでも作れます。でも毎日たくさん作るなら<b>パスタマシン</b>を使ったほうが速くてきれい。</p>
+        <p>Webも同じで、HTML/CSS/JSだけでも作れますが、大きなアプリは<b>フレームワーク</b>という道具セットを使います。</p>
+      </div>
+      <div class="box warn">
+        <h4>「フレームワーク」という言葉で止まりやすい</h4>
+        <p>難しく考えなくて大丈夫。<b>「作業をラクにする道具」</b>と言いかえてOKです。</p>
+      </div>
+    </div>
+    <div class="box relax">
+      <span class="tag relax">覚えなくてOK</span>
+      <p class="big" style="font-size:1.2em">このコースでは <b>Next.js（ネクスト・ジェイエス）</b> を使います。</p>
+      <p>使いこなすのは Claude Code。みなさんは「画面を作るときの道具の名前」と知っていれば十分です。</p>
+    </div>
+    <aside class="note">
+      <p>読み方「ネクスト・ジェイエス」を一度声に出しておくと、後で Claude Code の画面に出てきたときに戸惑わない。</p>
+    </aside>
+  </section>
+
+  <!-- 10 -->
+  <section class="slide" data-sec="2.2" data-title="画面の指示のコツ">
+    <div class="s-head"><span class="sec">2.2</span><h2 class="t">3つを意識すると、指示が具体的になる</h2></div>
+    <p class="lead">Claude Code への指示の例。ボタンを押すと、どの技術の話か色分けされます。</p>
+    <p class="sentence" id="sentence">トップページに大きなヘッダー画像を<span class="s-html">配置して</span>、その下に3つのカードを<span class="s-css">横並びに</span>表示して、それぞれ<span class="s-js">クリックしたら詳細ページに移動する</span>ようにして</p>
+    <div class="row" style="align-items:center">
+      <button class="btn" id="colorBtn" type="button" aria-pressed="false">色分けを見る</button>
+      <span class="chip c-front">配置して＝HTML</span>
+      <span class="chip c-api">大きな・横並び＝CSS</span>
+      <span class="chip c-back">クリックしたら移動＝JavaScript</span>
+    </div>
+    <div class="grid2">
+      <div class="say bad"><small>あいまいな頼み方</small>「いい感じのトップページにして」</div>
+      <div class="say good"><small>伝わる頼み方</small>「何を・どんな見た目で・押したらどうなるか」を言う</div>
+    </div>
+    <aside class="note">
+      <p>「大きな」はCSSの話なので、上の文では「大きな」も紫の仲間、と補足する。</p>
+      <p>受講者に自分のお店・サービスのトップページを想像して、1文で指示を作ってもらうワークにしてもよい。</p>
+    </aside>
+  </section>
+
+  <!-- 11 -->
+  <section class="slide" data-sec="2.3" data-title="キッチンで起きていること">
+    <div class="s-head"><span class="sec">2.3</span><h2 class="t">厨房（バックエンド）で起きていること</h2></div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="k">シェフが注文を確認</span><span class="b">リクエストの中身を読む</span></div>
+      <div class="step"><span class="n">2</span><span class="k">食材庫の在庫を確認</span><span class="b">データベースに問い合わせる</span></div>
+      <div class="step"><span class="n">3</span><span class="k">レシピ通りに調理</span><span class="b">ビジネスロジックを実行（計算・判定）</span></div>
+      <div class="step"><span class="n">4</span><span class="k">ウェイターに料理を渡す</span><span class="b">結果をフロントに返す</span></div>
+    </div>
+    <div class="box metaphor"><span class="tag metaphor">たとえ</span><p>お客さんは厨房の中を見られません。でも、料理が出てくるのは厨房がちゃんと働いているから。<b>見えないけど一番忙しい場所</b>です。</p></div>
+    <aside class="note">
+      <p>上段がレストラン、オレンジの下段がWebアプリ。2.1の「注文の流れ」の3番を、拡大して見ているイメージ。</p>
+    </aside>
+  </section>
+
+  <!-- 12 -->
+  <section class="slide" data-sec="2.3" data-title="ビジネスロジック">
+    <div class="s-head"><span class="sec">2.3</span><h2 class="t">「ビジネスロジック」＝お店のレシピ</h2><span class="tag warn">つまずき注意</span></div>
+    <div class="grid2" style="align-items:start">
+      <div style="display:flex;flex-direction:column;gap:.9em">
+        <div class="box warn">
+          <h4>言葉がかたくて身構えやすい</h4>
+          <p>意味はシンプル。<b>「そのアプリならではの計算やルール」</b>のことです。</p>
+          <p class="muted">例：合計金額の計算／在庫があるかの確認／会員ならポイント2倍</p>
+        </div>
+        <div class="box metaphor">
+          <span class="tag metaphor">たとえ</span>
+          <p><b>レシピ</b>＝プログラム。「こんな注文が来たら、この手順で作って、こう出す」という<b>手順書</b>です。</p>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.5em;align-items:flex-start">
+        <p class="muted" style="font-weight:700">例：ネットショップの会計</p>
+        <div class="receipt">
+          <div class="r"><span>小計</span><span>3,000円</span></div>
+          <div class="r"><span>＋ 送料</span><span>500円</span></div>
+          <div class="r"><span>＋ 消費税（10%）</span><span>350円</span></div>
+          <div class="r tot"><span>合計</span><span>3,850円</span></div>
+        </div>
+        <p class="muted">この計算をしているのがバックエンドのレシピ</p>
+      </div>
+    </div>
+    <aside class="note">
+      <p>「ビジネスロジック＝そのお店のルール」と言い換えるのが一番伝わる。</p>
+      <p>税は（3,000＋500）×10%＝350円。送料にも消費税がかかる点は聞かれたら補足。</p>
+    </aside>
+  </section>
+
+  <!-- 13 -->
+  <section class="slide" data-sec="2.3" data-title="バックエンドの仕事">
+    <div class="s-head"><span class="sec">2.3</span><h2 class="t">バックエンドの代表的な仕事</h2></div>
+    <div class="jobs">
+      <div class="job"><b>ログイン</b><span>IDとパスワードを照らし合わせて、本人か確かめる</span></div>
+      <div class="job"><b>データの保存</b><span>投稿・購入・登録をデータベースに書き込む</span></div>
+      <div class="job"><b>計算・変換</b><span>「小計＋送料＋税＝合計」などを出す</span></div>
+      <div class="job"><b>外部サービス連携</b><span>決済（Stripe）・メール送信・他社のAPIを呼ぶ</span></div>
+    </div>
+    <div class="grid2">
+      <div class="box relax">
+        <span class="tag relax">覚えなくてOK</span>
+        <p><b>Python</b>（パイソン）＝読み書きしやすいプログラミング言語<br><b>FastAPI</b>（ファスト・エーピーアイ）＝Pythonで裏側を速く作る道具</p>
+      </div>
+      <div class="box metaphor">
+        <span class="tag metaphor">あなたの立場</span>
+        <p class="big" style="font-size:1.15em">みなさんは<b>レストランのオーナー</b>。</p>
+        <p>レシピを書くのはシェフ（Claude Code）。オーナーは「こんな料理を出したい」と伝える係です。</p>
+      </div>
+    </div>
+    <aside class="note">
+      <p>「オーナー」の立場を強調すると、非エンジニアの受講者が自分の役割をイメージしやすい。</p>
+      <p>Stripe＝ネット決済のサービス。名前だけでOK。</p>
+    </aside>
+  </section>
+
+  <!-- 14 -->
+  <section class="slide" data-sec="2.3" data-title="切り分けて伝える">
+    <div class="s-head"><span class="sec">2.3</span><h2 class="t">場所が分かると、頼み方が変わる</h2></div>
+    <div class="tbl"><table>
+      <tr><th>こんな症状</th><th>あやしい場所</th><th>Claude Code への頼み方</th></tr>
+      <tr><td>画面は出るのに、データが保存されない</td><td><span class="chip c-back">バック</span> か <span class="chip c-db">DB</span></td><td>「バックエンドのデータ保存処理を確認して」</td></tr>
+      <tr><td>ログインできない</td><td><span class="chip c-back">バックの認証処理</span></td><td>「ログインAPIのパスワード照合の処理を確認して」</td></tr>
+    </table></div>
+    <div class="grid2">
+      <div class="say bad"><small>しくみを知らないと</small>「うまく動きません」</div>
+      <div class="say good"><small>しくみを知っていると</small>「画面は出るけど、保存のところで止まっているみたい。バックエンドを見て」</div>
+    </div>
+    <aside class="note">
+      <p>完璧に当てなくてOK。「たぶんここ」と添えるだけでClaude Codeの調査が速くなる、と伝える。</p>
+    </aside>
+  </section>
+
+  <!-- 15 -->
+  <section class="slide" data-sec="2.4" data-title="テーブル＝Excelの表">
+    <div class="s-head"><span class="sec">2.4</span><h2 class="t">データベースの中身は「Excelの表」</h2><span class="tag metaphor">たとえ：整理された食材庫</span></div>
+    <p class="lead">良い食材庫は種類ごとに棚が分かれ、ラベルと在庫数がついています。データベースも、データの種類ごとに<b>テーブル（表）</b>を分けてしまっておきます。</p>
+    <div class="tbl"><table id="userTable">
+      <tr><th>ユーザーID</th><th>名前</th><th>メールアドレス</th><th>登録日</th></tr>
+      <tr><td>1</td><td>田中太郎</td><td>tanaka@example.com</td><td>2026-01-15</td></tr>
+      <tr><td>2</td><td>鈴木花子</td><td>suzuki@example.com</td><td>2026-02-20</td></tr>
+      <tr><td>3</td><td>佐藤次郎</td><td>sato@example.com</td><td>2026-03-10</td></tr>
+    </table></div>
+    <div class="row" style="align-items:center">
+      <button class="btn" id="showRow" type="button" aria-pressed="false">「行」を見る</button>
+      <button class="btn" id="showCol" type="button" aria-pressed="false">「列（カラム）」を見る</button>
+      <span class="muted" id="rcText">ボタンを押すと表の一部が光ります</span>
+    </div>
+    <aside class="note">
+      <p>「Excelを触ったことがある人？」と聞くと、多くの人が手を挙げるので安心感が出る。</p>
+      <p>行＝横1本＝1人分、列＝縦1本＝項目。ボタンで光らせながら説明。</p>
+    </aside>
+  </section>
+
+  <!-- 16 -->
+  <section class="slide" data-sec="2.4" data-title="1つのアプリに複数のテーブル">
+    <div class="s-head"><span class="sec">2.4</span><h2 class="t">アプリには、いくつもテーブルがある</h2></div>
+    <p class="lead">ネットショップの場合。レストランなら「お客様名簿」「メニュー表」「注文伝票」を別々の棚に置くイメージです。</p>
+    <div class="grid3">
+      <div class="el c-db"><div class="name">ユーザー</div><div class="is">お客様名簿</div><p>名前／メール／住所</p></div>
+      <div class="el c-db"><div class="name">商品</div><div class="is">メニュー表</div><p>商品名／価格／在庫／説明文</p></div>
+      <div class="el c-db"><div class="name">注文</div><div class="is">注文伝票</div><p>誰が・いつ・何を買ったか</p></div>
+    </div>
+    <div class="box warn"><span class="tag warn">つまずき注意</span><p>「なぜ1枚の表にまとめないの？」→ 全部1枚にすると、田中さんが10回買えば名前とメールを10回書くことになり、<b>住所が変わったら10か所直す</b>はめになります。次のスライドで解決方法を見ます。</p></div>
+    <aside class="note">
+      <p>この疑問は実際によく出る。次の「リレーション」への橋渡しにする。</p>
+    </aside>
+  </section>
+
+  <!-- 17 -->
+  <section class="slide" data-sec="2.4" data-title="リレーション">
+    <div class="s-head"><span class="sec">2.4</span><h2 class="t">テーブル同士は「番号」でつながる（リレーション）</h2><span class="tag warn">つまずき注意</span></div>
+    <p class="lead">注文テーブルの<b style="color:var(--front)">ユーザーID</b>や<b style="color:var(--back)">商品ID</b>を押してみてください。つながっている行が光ります。</p>
+    <div class="rel">
+      <div><h5>注文テーブル（注文伝票）</h5><div class="tbl"><table id="ordT">
+        <tr><th>注文ID</th><th>ユーザーID</th><th>商品ID</th><th>注文日</th></tr>
+        <tr><td>101</td><td class="key" data-u="1" tabindex="0">1</td><td class="key p" data-p="7" tabindex="0">7</td><td>2026-04-01</td></tr>
+        <tr><td>102</td><td class="key" data-u="2" tabindex="0">2</td><td class="key p" data-p="8" tabindex="0">8</td><td>2026-04-03</td></tr>
+      </table></div></div>
+      <div><h5>ユーザーテーブル</h5><div class="tbl"><table id="relU">
+        <tr><th>ID</th><th>名前</th></tr>
+        <tr data-u="1"><td>1</td><td>田中太郎</td></tr>
+        <tr data-u="2"><td>2</td><td>鈴木花子</td></tr>
+        <tr data-u="3"><td>3</td><td>佐藤次郎</td></tr>
+      </table></div></div>
+      <div><h5>商品テーブル</h5><div class="tbl"><table id="relP">
+        <tr><th>ID</th><th>商品名</th></tr>
+        <tr data-p="7"><td>7</td><td>カメラ</td></tr>
+        <tr data-p="8"><td>8</td><td>三脚</td></tr>
+      </table></div></div>
+    </div>
+    <div class="box metaphor"><span class="tag metaphor">たとえ</span><p>注文伝票に「田中太郎さん、住所…、電話…」と全部書かず、<b>「3番テーブルのお客様」</b>とだけ書くのと同じ。番号を見れば名簿で調べられます。</p></div>
+    <aside class="note">
+      <p>この章で一番つまずきやすい所。「ID＝出席番号」と言い換えるのも効果的。</p>
+      <p>「注文101は、誰が何を買った？」とクイズにして、受講者にIDをたどってもらう（答え：田中太郎さんがカメラ）。</p>
+    </aside>
+  </section>
+
+  <!-- 18 -->
+  <section class="slide" data-sec="2.4" data-title="データの伝え方">
+    <div class="s-head"><span class="sec">2.4</span><h2 class="t">あなたが伝えるのは「どんなデータを扱うか」</h2></div>
+    <p class="lead">テーブルの設計は Claude Code がやってくれます。でも<b>何を記録したいか</b>は、お店のオーナーにしか分かりません。</p>
+    <div class="say good" style="font-size:1.1em"><small>指示の例</small>「ユーザーは<span class="chip c-db">名前</span>と<span class="chip c-db">メール</span>で登録できるようにして。商品には<span class="chip c-db">名前・価格・説明文・画像</span>を持たせて。ユーザーが商品を<span class="chip c-db">購入した記録</span>も残して。」</div>
+    <div class="grid2">
+      <div class="box metaphor"><h4>3つの言葉を使えると強い</h4><p><b>テーブル</b>＝表、<b>項目（カラム）</b>＝列、<b>リレーション</b>＝番号でのつながり</p></div>
+      <div class="box relax"><span class="tag relax">覚えなくてOK</span><p>このコースでは <b>PostgreSQL</b>（ポストグレス・キューエル）を使います。無料で広く使われているデータベースの名前です。</p></div>
+    </div>
+    <aside class="note">
+      <p>PostgreSQLは「ポスグレ」と略されることも多い、と一言添える。</p>
+    </aside>
+  </section>
+
+  <!-- 19 -->
+  <section class="slide" data-sec="2.5" data-title="開発の3つの道具">
+    <div class="s-head"><span class="sec">2.5</span><h2 class="t">開発で使う3つの道具</h2><span class="tag relax">深く覚えなくてOK</span></div>
+    <div class="grid3">
+      <div class="layer"><div class="code" style="color:var(--front)">VS Code</div><div class="meta">大工さんの作業場</div><p>プログラムを書くためのアプリ。ファイル一覧と編集画面が1つになっている</p></div>
+      <div class="layer"><div class="code" style="color:var(--ink)">ターミナル</div><div class="meta">コンピュータとの会話窓口</div><p>文字を打ってコンピュータに指示を出す、黒い画面</p></div>
+      <div class="layer"><div class="code" style="color:var(--db)">Git</div><div class="meta">ゲームのセーブポイント</div><p>ファイルの変更を記録して、いつでも前の状態に戻れる</p></div>
+    </div>
+    <div class="box metaphor"><p>ここで大事なのは使い方ではなく、<b>「何のための道具か」</b>を知っておくこと。操作のほとんどは Claude Code が代わりにやってくれます。</p></div>
+    <aside class="note">
+      <p>このパートは「覚えなくてOK」を強めに。名前と役割が一致すれば十分。</p>
+    </aside>
+  </section>
+
+  <!-- 20 -->
+  <section class="slide" data-sec="2.5" data-title="ターミナル">
+    <div class="s-head"><span class="sec">2.5</span><h2 class="t">ターミナル＝文字で話しかける窓</h2><span class="tag warn">つまずき注意</span></div>
+    <div class="grid2" style="align-items:center">
+      <div class="vsc" style="grid-template-columns:1fr;grid-template-rows:auto;min-height:0;height:auto">
+        <div class="term" style="grid-column:1;padding:1em 1.2em;font-size:1.05em;gap:.4em">
+          <div>$ cd my-shop</div>
+          <div>$ npm run dev</div>
+          <div style="color:#8fd3a8">✓ 起動しました http://localhost:3000</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.8em">
+        <div class="box warn">
+          <h4>「黒い画面」がこわく見える</h4>
+          <p>いつものマウス操作（クリック）を、<b>文字で打っているだけ</b>です。こわしてしまうことは、まずありません。</p>
+        </div>
+        <div class="box metaphor"><span class="tag metaphor">たとえ</span><p>スマホの<b>音声アシスタント</b>に話しかけるのを、文字でやっているイメージ。「このフォルダに移動して」「アプリを起動して」と頼んでいます。</p></div>
+      </div>
+    </div>
+    <p class="muted">必要なコマンドは Claude Code がほぼ代わりに打ってくれるので、自分で打つ場面は少なめです。</p>
+    <aside class="note">
+      <p>例の意味：cd＝フォルダに移動、npm run dev＝アプリを試しに起動。意味は覚えなくてOK。</p>
+    </aside>
+  </section>
+
+  <!-- 21 -->
+  <section class="slide" data-sec="2.5" data-title="Git＝セーブポイント">
+    <div class="s-head"><span class="sec">2.5</span><h2 class="t">Git＝ゲームのセーブポイント</h2></div>
+    <div class="timeline" id="tl">
+      <div class="tp"><span class="dot"></span><b>セーブ1</b><span class="muted">トップページ完成</span></div>
+      <span class="tline"></span>
+      <div class="tp"><span class="dot"></span><b>セーブ2</b><span class="muted">ログイン完成</span></div>
+      <span class="tline"></span>
+      <div class="tp work" id="tpWork"><span class="dot"></span><b id="tpWorkT">作業中</b><span class="muted" id="tpWorkS">商品一覧を追加中…</span></div>
+    </div>
+    <div class="row" style="align-items:center">
+      <button class="btn" id="gitBreak" type="button">おかしくなった！</button>
+      <button class="btn solid" id="gitBack" type="button" disabled>セーブ2に戻す（ロールバック）</button>
+      <span class="muted" id="gitMsg">セーブ＝<b>コミット</b>と呼びます</span>
+    </div>
+    <div class="grid2">
+      <div class="cloud"><div class="big" style="font-size:1.1em;color:var(--db)">GitHub</div><p>セーブデータを<b>クラウドに預ける</b>サービス。パソコンが壊れても安心。</p></div>
+      <div class="box warn"><span class="tag warn">つまずき注意</span><p><b>Git</b>＝セーブする仕組み（自分のパソコンの中）<br><b>GitHub</b>＝セーブを預けるネットの倉庫<br>名前が似ていますが、別のものです。</p></div>
+    </div>
+    <aside class="note">
+      <p>ボタンで「壊れた→戻す」を実演。ゲームのセーブを知っている人には一発で伝わる。</p>
+      <p>GitとGitHubの違いはよく混同される。「写真（Git）とGoogleフォト（GitHub）」のたとえも使える。</p>
+    </aside>
+  </section>
+
+  <!-- 22 -->
+  <section class="slide" data-sec="2.5" data-title="VS Codeに全部入り">
+    <div class="s-head"><span class="sec">2.5</span><h2 class="t">3つとも VS Code の中にそろっている</h2></div>
+    <div class="grid2 fill" style="grid-template-columns:1.4fr 1fr;align-items:stretch">
+      <div class="vsc" aria-hidden="true">
+        <div class="bar"><i></i><i></i><i class="git"></i><i></i></div>
+        <div class="files"><span class="lbl" style="background:var(--front-bg);color:var(--front)">ファイル一覧</span><div>app/</div><div>&nbsp;page.tsx</div><div>&nbsp;style.css</div><div>README.md</div></div>
+        <div class="editor"><span class="lbl" style="background:var(--api-bg);color:var(--api)">編集画面＋Claude Code</span><span class="ln" style="width:70%"></span><span class="ln" style="width:55%"></span><span class="ln" style="width:80%"></span><span class="ln" style="width:40%"></span></div>
+        <div class="term"><span class="lbl" style="background:#2a3240;color:#cfe3d6">ターミナル（下）</span><div>$ npm run dev</div></div>
+      </div>
+      <div class="legend3">
+        <div class="li"><b>作業場</b><span>VS Code 本体</span></div>
+        <div class="li"><b>ターミナル</b><span>画面の下に表示される</span></div>
+        <div class="li"><b style="color:var(--db)">Git</b><span>左の<b>ソース管理</b>アイコン（緑）</span></div>
+        <div class="li"><b>AI</b><span>Claude Code も VS Code の中で動く</span></div>
+      </div>
+    </div>
+    <aside class="note">
+      <p>アプリを切り替えなくても、VS Code ひとつで作業が終わる、がポイント。</p>
+      <p>第3章で実際の VS Code を開くので、ここでは配置のイメージだけ。</p>
+    </aside>
+  </section>
+
+  <!-- 23 -->
+  <section class="slide" data-sec="2.6" data-title="第2章まとめ">
+    <div class="s-head"><span class="sec">2.6</span><h2 class="t">第2章のまとめ</h2></div>
+    <div class="grid4">
+      <div class="el c-front"><div class="name">フロント</div><div class="is">客席</div><p>見える画面<br>HTML／CSS／JavaScript</p></div>
+      <div class="el c-api"><div class="name">API</div><div class="is">ウェイター</div><p>フロントとバックの仲介<br>リクエスト↔レスポンス</p></div>
+      <div class="el c-back"><div class="name">バック</div><div class="is">厨房</div><p>裏側の処理・ビジネスロジック<br>Python＋FastAPI</p></div>
+      <div class="el c-db"><div class="name">DB</div><div class="is">食材庫</div><p>テーブル（表）で保管<br>IDでつながる／PostgreSQL</p></div>
+    </div>
+    <div class="grid3">
+      <div class="box metaphor"><h4>VS Code</h4><p>作業場（エディタ）</p></div>
+      <div class="box metaphor"><h4>ターミナル</h4><p>文字でコンピュータに指示</p></div>
+      <div class="box metaphor"><h4>Git / GitHub</h4><p>セーブと、クラウドへの保管</p></div>
+    </div>
+    <aside class="note">
+      <p>この1枚で振り返り。色を指して「青は？」「緑は？」と受講者に答えてもらうと定着する。</p>
+    </aside>
+  </section>
+
+  <!-- 24 -->
+  <section class="slide" data-sec="2.6" data-title="なぜ学んだのか">
+    <div class="s-head"><span class="sec">2.6</span><h2 class="t">なぜ、エンジニアでなくてもこれを学ぶの？</h2></div>
+    <p class="big">コードを書くためではなく、<br>Claude Code に<b>的確に頼むため</b>。</p>
+    <div class="tbl"><table>
+      <tr><th style="width:50%">知識がないと</th><th>知識があると</th></tr>
+      <tr><td>「うまく動かない」とだけ伝える</td><td>「画面は出るけど、バックの保存処理でエラーが出る」と切り分けられる</td></tr>
+      <tr><td>Claude Code が何を作っているか分からない</td><td>テーブルの設計や API の動きを把握しながら進められる</td></tr>
+    </table></div>
+    <aside class="note">
+      <p>ここで「今日の内容はテストに出る暗記ではない」ともう一度安心させる。</p>
+    </aside>
+  </section>
+
+  <!-- 25 -->
+  <section class="slide" data-sec="2.6" data-title="チェックリスト">
+    <div class="s-head"><span class="sec">2.6</span><h2 class="t">チェックリスト：言えたらチェック</h2><span class="muted" id="checkCount"></span></div>
+    <div class="checks" id="checks">
+      <label><input type="checkbox" id="ck1"><span>レストランの4つの係（フロント / バック / DB / API）を説明できる<small>ヒント：客席・厨房・食材庫・ウェイター</small></span></label>
+      <label><input type="checkbox" id="ck2"><span>HTML / CSS / JavaScript の役割の違いを言える<small>ヒント：骨組み・内装・電気</small></span></label>
+      <label><input type="checkbox" id="ck3"><span>テーブルとリレーションのイメージが持てる<small>ヒント：Excelの表と、番号でのつながり</small></span></label>
+      <label><input type="checkbox" id="ck4"><span>VS Code・ターミナル・Git が何のための道具か言える<small>ヒント：作業場・会話窓口・セーブポイント</small></span></label>
+    </div>
+    <aside class="note">
+      <p>隣の人とペアになって、1人1項目ずつ説明し合うと効果的。言えなかった項目だけスライドに戻って復習（Oキーで一覧から戻れる）。</p>
+    </aside>
+  </section>
+
+  <!-- 26 -->
+  <section class="slide cover" data-sec="2.6" data-title="次章へ">
+    <div class="kicker">次の章</div>
+    <h1>第3章　<em>Claude Code</em> を<br>動かしてみよう</h1>
+    <p class="big muted" style="font-weight:500">インストール → ログイン → はじめての指示 まで、<br>実際に手を動かして進めます。</p>
+    <aside class="note">
+      <p>休憩を挟むならここ。第3章の前に、VS Code が入っているか確認しておくとスムーズ。</p>
+    </aside>
+  </section>
+
+  </main>
+  </div>
+
+  <div class="controls">
+    <button type="button" id="prev" aria-label="前のスライド">← 前へ</button>
+    <span class="count" id="count">1 / 26</span>
+    <button type="button" class="main" id="next" aria-label="次のスライド">次へ →</button>
+    <button type="button" id="ovBtn">一覧</button>
+    <button type="button" class="ghost" id="noteBtn" aria-pressed="false">講師メモ</button>
+    <button type="button" id="fsBtn">全画面</button>
+  </div>
+  <section class="notes" id="notes" hidden aria-live="polite"><h3>講師メモ</h3><div id="notesBody"></div></section>
+</div>
+
+<div class="overview" id="overview" hidden>
+  <div class="ohead"><h2>スライド一覧</h2><button class="btn" type="button" id="ovClose">閉じる</button></div>
+  <div class="ogrid" id="ogrid"></div>
+</div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length, cur = 0;
+  var $ = function (id) { return document.getElementById(id); };
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+
+  // section nav
+  var secs = [];
+  slides.forEach(function (s, i) { var k = s.dataset.sec; if (!secs.some(function (x) { return x.k === k; })) secs.push({ k: k, i: i }); });
+  secs.forEach(function (s) {
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = s.k; b.dataset.k = s.k;
+    b.addEventListener('click', function () { go(s.i); }); $('secnav').appendChild(b);
+  });
+  // overview
+  slides.forEach(function (s, i) {
+    var b = document.createElement('button'); b.type = 'button';
+    b.innerHTML = '<small>' + (i + 1) + '　' + s.dataset.sec + '</small><span></span>';
+    b.querySelector('span').textContent = s.dataset.title;
+    b.addEventListener('click', function () { go(i); toggleOv(false); });
+    $('ogrid').appendChild(b);
+  });
+
+  function go(i) {
+    cur = Math.max(0, Math.min(total - 1, i));
+    slides.forEach(function (s, j) { s.classList.toggle('on', j === cur); });
+    var s = slides[cur];
+    $('count').textContent = (cur + 1) + ' / ' + total;
+    $('bar').style.width = ((cur + 1) / total * 100) + '%';
+    $('secLabel').textContent = s.dataset.title;
+    Array.prototype.forEach.call($('secnav').children, function (b) { b.setAttribute('aria-current', b.dataset.k === s.dataset.sec ? 'true' : 'false'); });
+    Array.prototype.forEach.call($('ogrid').children, function (b, j) { b.classList.toggle('cur', j === cur); });
+    var n = s.querySelector('.note'); $('notesBody').innerHTML = n ? n.innerHTML : '<p>（メモなし）</p>';
+    $('prev').disabled = cur === 0; $('next').disabled = cur === total - 1;
+    s.scrollTop = 0;
+    if (location.hash !== '#s' + (cur + 1)) history.replaceState(null, '', '#s' + (cur + 1));
+  }
+  function fromHash() { var m = /^#s(\d+)$/.exec(location.hash); return m ? parseInt(m[1], 10) - 1 : 0; }
+
+  $('prev').addEventListener('click', function () { go(cur - 1); });
+  $('next').addEventListener('click', function () { go(cur + 1); });
+  function toggleOv(on) { $('overview').hidden = !on; if (on) $('ogrid').children[cur].focus(); }
+  $('ovBtn').addEventListener('click', function () { toggleOv(true); });
+  $('ovClose').addEventListener('click', function () { toggleOv(false); });
+  function toggleNotes(on) { $('notes').hidden = !on; $('noteBtn').setAttribute('aria-pressed', on); store.set('ch2-notes', on ? '1' : '0'); }
+  $('noteBtn').addEventListener('click', function () { toggleNotes($('notes').hidden); });
+  $('fsBtn').addEventListener('click', function () {
+    var el = document.documentElement;
+    try { if (document.fullscreenElement) document.exitFullscreen(); else if (el.requestFullscreen) el.requestFullscreen().catch(function () {}); } catch (e) {}
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.target.matches && e.target.matches('input, textarea')) return;
+    if (!$('overview').hidden) { if (e.key === 'Escape' || e.key === 'o' || e.key === 'O') toggleOv(false); return; }
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !(e.target.closest && e.target.closest('button')))) { e.preventDefault(); go(cur + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(cur - 1); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(total - 1);
+    else if (e.key === 'o' || e.key === 'O') toggleOv(true);
+    else if (e.key === 'n' || e.key === 'N') toggleNotes($('notes').hidden);
+  });
+  // swipe
+  var sx = null;
+  $('stage').addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
+  $('stage').addEventListener('touchend', function (e) {
+    if (sx === null) return; var dx = e.changedTouches[0].clientX - sx; sx = null;
+    if (Math.abs(dx) > 60) go(cur + (dx < 0 ? 1 : -1));
+  });
+  window.addEventListener('hashchange', function () { go(fromHash()); });
+
+  // ---- flow demo
+  var steps = [
+    { on: ['front'], dir: 'req', r: 'お客様が「パスタください」と注文する', w: 'ユーザーが「購入」ボタンをクリック。フロントから<b>リクエスト</b>が出発' },
+    { on: ['front', 'api', 'back'], dir: 'req', r: 'ウェイターが注文をキッチンへ伝える', w: '<b>API</b>がフロントからバックエンドへリクエストを届ける' },
+    { on: ['back', 'db'], dir: 'work', r: 'キッチンが食材庫から材料を出して調理する', w: 'バックエンドが<b>データベース</b>から情報を取り出して処理する（在庫確認・金額計算など）' },
+    { on: ['back', 'api', 'front'], dir: 'res', r: 'ウェイターが料理をテーブルへ運ぶ', w: 'APIがバックからフロントへ<b>レスポンス</b>を返す。画面に「購入完了」と表示' }
+  ];
+  var fs = 0;
+  function renderFlow() {
+    var st = steps[fs];
+    Array.prototype.forEach.call(document.querySelectorAll('#flow .node'), function (n) { n.classList.toggle('on', st.on.indexOf(n.dataset.k) > -1); });
+    $('flowNo').textContent = fs + 1; $('flowR').textContent = st.r; $('flowW').innerHTML = st.w;
+    $('flowDir').innerHTML = st.dir === 'req' ? '<span class="dirpill req">行き：リクエスト →</span>' : st.dir === 'res' ? '<span class="dirpill res">← 帰り：レスポンス</span>' : '厨房の中で処理中';
+    $('flowPrev').disabled = fs === 0;
+    $('flowNext').textContent = fs === steps.length - 1 ? 'もう一度はじめから' : '次のステップ →';
+  }
+  $('flowNext').addEventListener('click', function () { fs = fs === steps.length - 1 ? 0 : fs + 1; renderFlow(); });
+  $('flowPrev').addEventListener('click', function () { if (fs > 0) { fs--; renderFlow(); } });
+  renderFlow();
+
+  // ---- quiz cards
+  Array.prototype.forEach.call(document.querySelectorAll('.qcard'), function (c) {
+    c.addEventListener('click', function () {
+      var open = c.getAttribute('aria-expanded') !== 'true';
+      c.setAttribute('aria-expanded', open); c.querySelector('.a').hidden = !open; c.querySelector('.hint').hidden = open;
+    });
+  });
+
+  // ---- sentence coloring
+  $('colorBtn').addEventListener('click', function () {
+    var on = $('sentence').classList.toggle('colored');
+    this.setAttribute('aria-pressed', on); this.textContent = on ? '色分けを消す' : '色分けを見る';
+  });
+
+  // ---- row / column
+  var ut = $('userTable');
+  function clearRC() { Array.prototype.forEach.call(ut.querySelectorAll('.hl'), function (x) { x.classList.remove('hl'); }); $('showRow').setAttribute('aria-pressed', 'false'); $('showCol').setAttribute('aria-pressed', 'false'); }
+  $('showRow').addEventListener('click', function () {
+    var was = this.getAttribute('aria-pressed') === 'true'; clearRC(); if (was) { $('rcText').textContent = 'ボタンを押すと表の一部が光ります'; return; }
+    ut.rows[1].classList.add('hl'); this.setAttribute('aria-pressed', 'true');
+    $('rcText').innerHTML = '<b>行（横1本）</b>＝1件のデータ。ここでは田中太郎さん1人分';
+  });
+  $('showCol').addEventListener('click', function () {
+    var was = this.getAttribute('aria-pressed') === 'true'; clearRC(); if (was) { $('rcText').textContent = 'ボタンを押すと表の一部が光ります'; return; }
+    Array.prototype.forEach.call(ut.rows, function (r) { r.cells[2].classList.add('hl'); }); this.setAttribute('aria-pressed', 'true');
+    $('rcText').innerHTML = '<b>列（縦1本）＝カラム</b>＝データの項目。ここでは全員のメールアドレス';
+  });
+
+  // ---- relation
+  function relClear() { Array.prototype.forEach.call(document.querySelectorAll('#ordT .hl, #relU .hl, #relP .hl'), function (x) { x.classList.remove('hl'); }); }
+  Array.prototype.forEach.call(document.querySelectorAll('#ordT td.key'), function (td) {
+    function act() {
+      relClear(); td.classList.add('hl');
+      if (td.dataset.u) { var r = document.querySelector('#relU tr[data-u="' + td.dataset.u + '"]'); if (r) r.classList.add('hl'); }
+      if (td.dataset.p) { var p = document.querySelector('#relP tr[data-p="' + td.dataset.p + '"]'); if (p) p.classList.add('hl'); }
+    }
+    td.addEventListener('click', act); td.addEventListener('mouseenter', act);
+    td.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); act(); } });
+  });
+
+  // ---- git
+  $('gitBreak').addEventListener('click', function () {
+    $('tpWork').classList.remove('work'); $('tpWork').classList.add('broken');
+    $('tpWorkT').textContent = 'エラー！'; $('tpWorkS').textContent = '画面が真っ白に…';
+    $('gitBack').disabled = false; this.disabled = true;
+    $('gitMsg').textContent = 'あわてなくて大丈夫。セーブポイントがあります';
+  });
+  $('gitBack').addEventListener('click', function () {
+    $('tpWork').classList.remove('broken'); $('tpWork').classList.add('gone');
+    $('tpWorkT').textContent = '取り消し'; $('tpWorkS').textContent = 'セーブ2の状態に戻った';
+    this.disabled = true; $('gitMsg').innerHTML = '戻せました。これが<b>ロールバック</b>';
+    setTimeout(function () {
+      $('tpWork').className = 'tp work'; $('tpWorkT').textContent = '作業中'; $('tpWorkS').textContent = '商品一覧を追加中…';
+      $('gitBreak').disabled = false; $('gitMsg').innerHTML = 'セーブ＝<b>コミット</b>と呼びます';
+    }, 4000);
+  });
+
+  // ---- checklist
+  var cks = Array.prototype.slice.call(document.querySelectorAll('#checks input'));
+  function countChecks() { var n = cks.filter(function (c) { return c.checked; }).length; $('checkCount').textContent = n + ' / ' + cks.length + (n === cks.length ? '　完璧です！' : ''); }
+  cks.forEach(function (c) { c.checked = store.get('ch2-' + c.id) === '1'; c.addEventListener('change', function () { store.set('ch2-' + c.id, c.checked ? '1' : '0'); countChecks(); }); });
+  countChecks();
+
+  if (store.get('ch2-notes') === '1') toggleNotes(true);
+  go(fromHash());
+})();
+</script>
+</body>
+</html>
