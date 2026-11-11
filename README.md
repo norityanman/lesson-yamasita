@@ -43,3 +43,4 @@ claude.ai の Artifact として公開して使います（Claude への接続�
 - SparkAI は株式会社ReFast のAIスクール（https://sparkai.jp/）の情報をもとに答えます
 - 「SparkAI 追加メモ」に公式の最新情報を貼ると、それを優先して答えます
 - Enter で送信、Shift+Enter で改行、「止める」で回答を中断
+- マイクボタンを押して話し、もう一度押すと質問を送信（Chrome などのブラウザ、Claude デスクトップアプリで使えます）

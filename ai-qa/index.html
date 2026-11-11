@@ -88,6 +88,12 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
 .row button { border: 0; border-radius: 12px; padding: 0 18px; height: 46px; font-weight: 700; background: var(--ink); color: var(--bg); white-space: nowrap; }
 .row button:disabled { opacity: .45; cursor: default; }
 .row button.stop { background: var(--paper); color: var(--ink); border: 1.5px solid var(--line); }
+.row button.mic { width: 46px; padding: 0; background: var(--paper); color: var(--ink); border: 1.5px solid var(--line); display: grid; place-items: center; }
+.row button.mic svg { width: 20px; height: 20px; }
+.row button.mic[data-state="listening"] { background: var(--claude); border-color: var(--claude); color: #fff; }
+.row button.mic[data-state="starting"], .row button.mic[data-state="finishing"] { border-color: var(--claude); color: var(--claude); }
+@media (prefers-reduced-motion: no-preference) { .row button.mic[data-state="listening"] { animation: pulse 1.4s ease-in-out infinite; } @keyframes pulse { 50% { box-shadow: 0 0 0 6px var(--claude-bg); } } }
+.micnote { font-size: 12px; color: var(--claude); min-height: 0; }
 .foot { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .foot button { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; font-size: 12px; }
 .offline { border: 1px dashed var(--warn); color: var(--warn); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
@@ -123,11 +129,13 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
   <div class="composer">
     <div class="suggest" id="suggest"></div>
     <form class="row" id="form">
+      <button type="button" id="mic" class="mic" hidden aria-label="声で質問する" title="声で質問する"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></button>
       <label for="q" hidden>質問</label>
-      <textarea id="q" rows="1" placeholder="質問を入力（Enterで送信 / Shift+Enterで改行）"></textarea>
+      <textarea id="q" rows="1" placeholder="質問を入力、またはマイクで話す"></textarea>
       <button type="submit" id="send">聞く</button>
       <button type="button" id="stop" class="stop" hidden>止める</button>
     </form>
+    <div class="micnote" id="micnote" aria-live="polite" hidden></div>
     <div class="foot">
       <span>回答は AI によるものです。料金や最新情報は公式サイトで確認してください。</span>
       <button type="button" id="clear">会話をリセット</button>
@@ -266,6 +274,51 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
   function autosize() { q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 160) + "px"; }
   q.addEventListener("input", autosize);
   $("clear").onclick = () => { if (ctl) ctl.abort(); turns = []; cleared = true; log.textContent = ""; q.focus(); };
+
+  // 音声入力
+  const mic = $("mic"), micnote = $("micnote");
+  let dict = null, base = "", lang = "ja", sendAfter = false;
+  function micMsg(t) { micnote.textContent = t; micnote.hidden = !t; }
+  const MIC_END = {
+    not_granted: "マイクが使えません。ブラウザかページの権限設定で許可すると声で質問できます。",
+    rate_limited: "音声入力が混み合っています。少し待ってからもう一度押してください。",
+    upstream_error: "音声を聞き取れませんでした。もう一度押してください。",
+    time_limit: "聞き取りを終了しました。"
+  };
+  function setupDictation(d) {
+    dict = d; mic.hidden = false;
+    d.onPartial(({ text }) => { q.value = base + text; autosize(); });
+    d.onFinal(({ text }) => { base += text; q.value = base; autosize(); });
+    d.onState(({ state, reason }) => {
+      mic.dataset.state = state;
+      mic.setAttribute("aria-label", state === "idle" ? "声で質問する" : "話し終えて送信");
+      if (state === "starting") micMsg("マイクを準備中…");
+      else if (state === "listening") micMsg("聞いています。話し終えたらもう一度マイクを押すと送信します。");
+      else if (state === "finishing") micMsg("聞き取り中…");
+      else if (state === "idle") {
+        if (reason === "unavailable") {
+          if (lang) { lang = undefined; micMsg(""); } else { mic.hidden = true; micMsg(""); }
+        } else micMsg(MIC_END[reason] || "");
+        if (reason === "not_granted") mic.hidden = true;
+        if (sendAfter && (reason === "stopped" || reason === "viewer_stopped")) { sendAfter = false; ask(); }
+        sendAfter = false;
+      }
+    });
+  }
+  mic.addEventListener("click", () => {
+    if (!dict) return;
+    if (dict.active()) { sendAfter = true; dict.stop().catch(() => {}); return; }
+    base = q.value ? q.value.replace(/\s*$/, "") + (q.value.trim() ? " " : "") : "";
+    dict.start(lang ? { language: lang } : undefined).catch((e) => {
+      const c = e && e.code;
+      if (c === "not_granted") { mic.hidden = true; micMsg(MIC_END.not_granted); }
+      else if (c === "unavailable") { if (lang) { lang = undefined; micMsg("もう一度マイクを押してください。"); } else { mic.hidden = true; micMsg(""); } }
+      else if (c === "rate_limited" || c === "upstream_error") micMsg(MIC_END[c]);
+    });
+  });
+  if (window.claude && window.claude.use) {
+    window.claude.use("dictation").then((d) => { if (d) setupDictation(d); }).catch(() => {});
+  }
 
   function setStatus(on, txt) { $("status").dataset.on = on ? "1" : "0"; $("statusText").textContent = txt; }
 
