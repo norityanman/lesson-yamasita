@@ -60,6 +60,7 @@ details.memo { background: var(--paper); border: 1px solid var(--line); border-r
 details.memo summary { cursor: pointer; font-weight: 700; font-size: 14px; }
 details.memo summary span { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 6px; }
 details.memo p { margin: 8px 0; font-size: 13px; color: var(--muted); }
+details.memo a { color: var(--spark); }
 details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--bg); }
 
 .log { flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -102,13 +103,13 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
   <div class="topics" role="group" aria-label="質問のテーマ">
     <button id="t-claude" data-t="claude" aria-pressed="true">Claude</button>
     <button id="t-spark" data-t="spark" aria-pressed="false">SparkAI</button>
-    <button id="t-both" data-t="both" aria-pressed="false">くらべる</button>
+    <button id="t-both" data-t="both" aria-pressed="false">SparkAI×Claude</button>
   </div>
 
   <details class="memo" id="memoBox">
-    <summary>SparkAI メモ<span>どの SparkAI のことか書いておくと答えが正確になります</span></summary>
-    <p>「SparkAI」という名前のサービスは複数あります（メールアプリ Spark の AI 機能、スマホのAIチャットアプリ、Apache Spark 系など）。使っているサービスの説明や公式ページの文章を貼っておくと、それを前提に答えます。このメモはこのブラウザにだけ保存されます。</p>
-    <textarea id="memo" placeholder="例：社内で使っている SparkAI。議事録の要約と、Slack 連携ができる。料金は月額…"></textarea>
+    <summary>SparkAI 追加メモ<span>公式ページの最新情報を貼ると、それを優先して答えます</span></summary>
+    <p>この窓口の SparkAI は、株式会社ReFast が運営するAIスクール（<a href="https://sparkai.jp/" target="_blank" rel="noopener">sparkai.jp</a>）です。料金やコースが変わったときは、公式ページの文章をここに貼ってください。メモはこのブラウザにだけ保存されます。</p>
+    <textarea id="memo" placeholder="例：2026年12月から新コース「○○」が追加。受講料は…"></textarea>
   </details>
 
   <div class="offline" id="offline" hidden>この画面では Claude に接続できません。claude.ai でこのページを開き、サインインしてから質問してください。</div>
@@ -138,10 +139,20 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
 (() => {
   const SUGGEST = {
     claude: ["Claude の無料プランと有料プランの違いは？", "Claude Code って何？", "上手な質問（プロンプト）のコツは？", "Claude に PDF を読ませるには？"],
-    spark:  ["SparkAI で何ができる？", "SparkAI の始め方を教えて", "SparkAI を仕事でどう使う？", "SparkAI を使うときの注意点は？"],
-    both:   ["SparkAI と Claude の違いは？", "どっちを使えばいい？用途別に教えて", "2つを組み合わせる使い方は？"]
+    spark:  ["SparkAI ってどんなスクール？", "コースと料金を教えて", "分割払いはできる？", "法人向けプランはある？", "申し込み前に相談できる？"],
+    both:   ["SparkAI で Claude をどう学べる？", "AI業務自動化コースと AI駆動開発コースの違いは？", "プログラミング未経験でも Claude Code を学べる？"]
   };
-  const LABEL = { claude: "CLAUDE について", spark: "SPARKAI について", both: "くらべると" };
+  const LABEL = { claude: "CLAUDE について", spark: "SPARKAI について", both: "SparkAI × Claude" };
+  const SPARK_FACTS = [
+    "SparkAI（https://sparkai.jp/）は、株式会社ReFast が運営する、実践で使えるAIスキルを学ぶオンラインスクール。n8n・Dify を使ったAI業務自動化から、Claude Code を使ったAI駆動開発までを扱う。",
+    "・AI業務自動化コース（Claude × n8n × Dify）：受講期間365日、¥248,000（税込）。12回分割で月々¥21,700から。",
+    "・AI駆動開発コース（Claude Code実践マスター）：受講期間365日、¥298,000（税込）。分割で月々¥26,075から。",
+    "・Claude Code開発 & MCP構築コース：8週間のコースとして紹介されている（料金の詳細は公式で確認）。",
+    "・法人・個人事業主向けの事業者プラン：受講期間中の実装伴走つき。1席 ¥398,000、3席 ¥598,000（税込、一括払いのみ）。IT以外の業種（建設・介護・物流など）の事業者も対象。",
+    "・ツール（Claude、n8n、Dify など）の利用料は受講料に含まれない。2コース同時受講の料金は別途案内。",
+    "・支払いはクレジットカードが中心。申し込み前に無料相談（オンライン、30分程度）があり、コース提案や支払い方法を案内している。問い合わせは https://sparkai.jp/contact 、法人は https://sparkai.jp/business 。",
+    "（この情報は2026年11月時点で確認したもの。）"
+  ].join("\n");
   const $ = (id) => document.getElementById(id);
   const log = $("log"), q = $("q"), send = $("send"), stop = $("stop"), memo = $("memo");
   let topic = "claude", turns = [], sample = null, ctl = null, busy = false, cleared = false;
@@ -192,10 +203,9 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
       "・最初の1〜2文で結論を言い、必要なら箇条書き（「・」）で3〜5点補足する。全体で300字程度まで。Markdown の見出しや太字記号は使わない。",
       "・料金・プラン・最新機能など変わりやすい情報は、知っている範囲で答えたうえで「最新は公式サイトで確認を」と一言添える。",
       "・知らないこと、確信のないことは推測で断定せず、そう伝える。",
-      sp
-        ? "・ユーザーの言う SparkAI は次のサービスです。この説明を最優先の前提にしてください：\n" + sp.slice(0, 4000)
-        : "・「SparkAI」は同名のサービスが複数ある（メールアプリ Spark の AI 機能、スマホのAIチャットアプリ「SparkAI」、Apache Spark 系のAI基盤など）。どれか特定できない質問では、代表的なものを短く挙げて答え、最後に「画面上の『SparkAI メモ』に使っているサービスを書くと、より正確に答えられます」と添える。",
-      "今の質問テーマ：" + { claude: "Claude", spark: "SparkAI", both: "SparkAI と Claude の比較" }[topic]
+      "・この窓口でいう SparkAI は次のスクールのこと（同名の別サービスと混同しない）。SparkAI の質問にはこの情報だけを根拠に答え、ここにないこと（講師名、合格率、返金条件など）は「公式サイトか無料相談で確認してください」と案内する：\n" + SPARK_FACTS,
+      sp ? "・ユーザーが追加した最新メモ（上の情報と食い違う場合はこちらを優先）：\n" + sp.slice(0, 4000) : "",
+      "今の質問テーマ：" + { claude: "Claude", spark: "SparkAI", both: "SparkAI で学べる Claude 関連のこと" }[topic]
     ].join("\n");
   }
 

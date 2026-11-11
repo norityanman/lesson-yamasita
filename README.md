@@ -39,6 +39,7 @@ lesson-yamasita/
 SparkAI と Claude についての質問に、Claude がその場で答えるアプリです。
 claude.ai の Artifact として公開して使います（Claude への接続は claude.ai 上でのみ動きます）。
 
-- 上のボタンで「Claude / SparkAI / くらべる」を切り替え
-- 「SparkAI メモ」に使っている SparkAI の説明を書くと、それを前提に答えます
+- 上のボタンで「Claude / SparkAI / SparkAI×Claude」を切り替え
+- SparkAI は株式会社ReFast のAIスクール（https://sparkai.jp/）の情報をもとに答えます
+- 「SparkAI 追加メモ」に公式の最新情報を貼ると、それを優先して答えます
 - Enter で送信、Shift+Enter で改行、「止める」で回答を中断
