@@ -1,0 +1,272 @@
+<title>AIそくとう窓口</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;500;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one-column help-desk counter. A slim header, topic switch, chat log, and a composer pinned to the bottom. */
+:root {
+  --bg: #f3f5f2;
+  --paper: #ffffff;
+  --ink: #18211d;
+  --muted: #5d6a63;
+  --line: #d9e0db;
+  --claude: #c25a2c;  --claude-bg: #fbeee6;
+  --spark: #1f7a8c;   --spark-bg: #e3f2f5;
+  --both: #5b5fb0;    --both-bg: #ecedf9;
+  --me-bg: #18211d;   --me-ink: #f3f5f2;
+  --warn: #9a6b00;
+  --f-display: "M PLUS 1p", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --f-body: "M PLUS 1p", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121614; --paper: #1b211e; --ink: #e8eeea; --muted: #9eaba4; --line: #2f3833;
+  --claude: #f08a5b; --claude-bg: #3a2419; --spark: #5cc3d6; --spark-bg: #15313a;
+  --both: #a3a7f0; --both-bg: #262845; --me-bg: #e8eeea; --me-ink: #121614; --warn: #ffd166;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121614; --paper: #1b211e; --ink: #e8eeea; --muted: #9eaba4; --line: #2f3833;
+  --claude: #f08a5b; --claude-bg: #3a2419; --spark: #5cc3d6; --spark-bg: #15313a;
+  --both: #a3a7f0; --both-bg: #262845; --me-bg: #e8eeea; --me-ink: #121614; --warn: #ffd166;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.7; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--both); outline-offset: 2px; }
+
+.app { max-width: 760px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; gap: 14px;
+  padding-block: 18px 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 24px; letter-spacing: .02em; text-wrap: balance; }
+h1 small { font-weight: 500; font-size: 13px; color: var(--muted); margin-left: 6px; }
+.status { font-family: var(--f-mono); font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.status[data-on="1"] .dot { background: #2fa36b; }
+
+.topics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 5px; }
+.topics button { border: 0; background: transparent; border-radius: 8px; padding: 8px 6px; font-weight: 700; color: var(--muted); }
+.topics button[aria-pressed="true"][data-t="claude"] { background: var(--claude-bg); color: var(--claude); }
+.topics button[aria-pressed="true"][data-t="spark"]  { background: var(--spark-bg);  color: var(--spark); }
+.topics button[aria-pressed="true"][data-t="both"]   { background: var(--both-bg);   color: var(--both); }
+
+details.memo { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+details.memo summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+details.memo summary span { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 6px; }
+details.memo p { margin: 8px 0; font-size: 13px; color: var(--muted); }
+details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--bg); }
+
+.log { flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.msg { display: flex; flex-direction: column; gap: 4px; max-width: 92%; min-width: 0; }
+.msg .who { font-size: 11px; letter-spacing: .08em; color: var(--muted); font-family: var(--f-mono); }
+.msg .body { padding: 11px 15px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.me { align-self: flex-end; align-items: flex-end; }
+.msg.me .body { background: var(--me-bg); color: var(--me-ink); border-bottom-right-radius: 4px; }
+.msg.ai .body { background: var(--paper); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.msg.ai[data-t="claude"] .who { color: var(--claude); }
+.msg.ai[data-t="spark"] .who { color: var(--spark); }
+.msg.ai[data-t="both"] .who { color: var(--both); }
+.msg.ai .body.thinking { color: var(--muted); }
+.msg.ai .note { font-size: 12px; color: var(--warn); }
+.example-tag { font-size: 11px; color: var(--muted); align-self: center; border: 1px dashed var(--line); border-radius: 999px; padding: 2px 10px; }
+
+.suggest { display: flex; flex-wrap: wrap; gap: 6px; }
+.suggest button { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 5px 12px; font-size: 13px; }
+.suggest button:hover { border-color: var(--ink); }
+
+.composer { position: sticky; bottom: 0; background: var(--bg); padding-block: 10px calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; gap: 8px; align-items: flex-end; }
+.row textarea { flex: 1; min-width: 0; resize: none; min-height: 46px; max-height: 160px; border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 14px; background: var(--paper); }
+.row textarea:focus { border-color: var(--ink); outline: none; }
+.row button { border: 0; border-radius: 12px; padding: 0 18px; height: 46px; font-weight: 700; background: var(--ink); color: var(--bg); white-space: nowrap; }
+.row button:disabled { opacity: .45; cursor: default; }
+.row button.stop { background: var(--paper); color: var(--ink); border: 1.5px solid var(--line); }
+.foot { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.foot button { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; font-size: 12px; }
+.offline { border: 1px dashed var(--warn); color: var(--warn); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+@media (prefers-reduced-motion: no-preference) { .msg { animation: rise .18s ease-out; } @keyframes rise { from { transform: translateY(4px); opacity: .6; } } }
+</style>
+
+<div class="app">
+  <header>
+    <h1>AIそくとう窓口<small>SparkAI と Claude の質問にすぐ答えます</small></h1>
+    <div class="status" id="status" data-on="0"><span class="dot"></span><span id="statusText">接続を確認中…</span></div>
+  </header>
+
+  <div class="topics" role="group" aria-label="質問のテーマ">
+    <button id="t-claude" data-t="claude" aria-pressed="true">Claude</button>
+    <button id="t-spark" data-t="spark" aria-pressed="false">SparkAI</button>
+    <button id="t-both" data-t="both" aria-pressed="false">くらべる</button>
+  </div>
+
+  <details class="memo" id="memoBox">
+    <summary>SparkAI メモ<span>どの SparkAI のことか書いておくと答えが正確になります</span></summary>
+    <p>「SparkAI」という名前のサービスは複数あります（メールアプリ Spark の AI 機能、スマホのAIチャットアプリ、Apache Spark 系など）。使っているサービスの説明や公式ページの文章を貼っておくと、それを前提に答えます。このメモはこのブラウザにだけ保存されます。</p>
+    <textarea id="memo" placeholder="例：社内で使っている SparkAI。議事録の要約と、Slack 連携ができる。料金は月額…"></textarea>
+  </details>
+
+  <div class="offline" id="offline" hidden>この画面では Claude に接続できません。claude.ai でこのページを開き、サインインしてから質問してください。</div>
+
+  <main class="log" id="log" aria-live="polite">
+    <span class="example-tag">回答例</span>
+    <div class="msg me"><span class="who">あなた</span><div class="body">Claude って何ができるの？</div></div>
+    <div class="msg ai" data-t="claude"><span class="who">CLAUDE について</span><div class="body">Anthropic が作った AI アシスタントです。文章の作成や要約、翻訳、プログラミングの手伝い、資料やデータの読み取りなどができます。claude.ai やスマホアプリで会話できるほか、Claude Code のように開発作業を任せる使い方もあります。</div></div>
+  </main>
+
+  <div class="composer">
+    <div class="suggest" id="suggest"></div>
+    <form class="row" id="form">
+      <label for="q" hidden>質問</label>
+      <textarea id="q" rows="1" placeholder="質問を入力（Enterで送信 / Shift+Enterで改行）"></textarea>
+      <button type="submit" id="send">聞く</button>
+      <button type="button" id="stop" class="stop" hidden>止める</button>
+    </form>
+    <div class="foot">
+      <span>回答は AI によるものです。料金や最新情報は公式サイトで確認してください。</span>
+      <button type="button" id="clear">会話をリセット</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const SUGGEST = {
+    claude: ["Claude の無料プランと有料プランの違いは？", "Claude Code って何？", "上手な質問（プロンプト）のコツは？", "Claude に PDF を読ませるには？"],
+    spark:  ["SparkAI で何ができる？", "SparkAI の始め方を教えて", "SparkAI を仕事でどう使う？", "SparkAI を使うときの注意点は？"],
+    both:   ["SparkAI と Claude の違いは？", "どっちを使えばいい？用途別に教えて", "2つを組み合わせる使い方は？"]
+  };
+  const LABEL = { claude: "CLAUDE について", spark: "SPARKAI について", both: "くらべると" };
+  const $ = (id) => document.getElementById(id);
+  const log = $("log"), q = $("q"), send = $("send"), stop = $("stop"), memo = $("memo");
+  let topic = "claude", turns = [], sample = null, ctl = null, busy = false, cleared = false;
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} }
+  };
+  memo.value = store.get("sparkMemo");
+  if (memo.value) $("memoBox").open = false;
+  memo.addEventListener("input", () => store.set("sparkMemo", memo.value));
+
+  function renderSuggest() {
+    const box = $("suggest"); box.textContent = "";
+    for (const s of SUGGEST[topic]) {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = s;
+      b.onclick = () => { q.value = s; ask(); };
+      box.append(b);
+    }
+  }
+  document.querySelectorAll(".topics button").forEach((b) => {
+    b.onclick = () => {
+      topic = b.dataset.t;
+      document.querySelectorAll(".topics button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      renderSuggest(); q.focus();
+    };
+  });
+  renderSuggest();
+
+  function clearExamples() {
+    if (cleared) return; cleared = true; log.textContent = "";
+  }
+  function bubble(kind, text, t) {
+    const m = document.createElement("div"); m.className = "msg " + kind;
+    if (t) m.dataset.t = t;
+    const who = document.createElement("span"); who.className = "who";
+    who.textContent = kind === "me" ? "あなた" : LABEL[t];
+    const body = document.createElement("div"); body.className = "body"; body.textContent = text;
+    m.append(who, body); log.append(m);
+    m.scrollIntoView({ block: "end", behavior: "smooth" });
+    return { m, body };
+  }
+
+  function rules() {
+    const sp = memo.value.trim();
+    return [
+      "あなたは「AIそくとう窓口」の回答係です。SparkAI と Claude（Anthropic の AI アシスタント）についての質問に、日本語で、すぐ読める短さで答えてください。",
+      "・最初の1〜2文で結論を言い、必要なら箇条書き（「・」）で3〜5点補足する。全体で300字程度まで。Markdown の見出しや太字記号は使わない。",
+      "・料金・プラン・最新機能など変わりやすい情報は、知っている範囲で答えたうえで「最新は公式サイトで確認を」と一言添える。",
+      "・知らないこと、確信のないことは推測で断定せず、そう伝える。",
+      sp
+        ? "・ユーザーの言う SparkAI は次のサービスです。この説明を最優先の前提にしてください：\n" + sp.slice(0, 4000)
+        : "・「SparkAI」は同名のサービスが複数ある（メールアプリ Spark の AI 機能、スマホのAIチャットアプリ「SparkAI」、Apache Spark 系のAI基盤など）。どれか特定できない質問では、代表的なものを短く挙げて答え、最後に「画面上の『SparkAI メモ』に使っているサービスを書くと、より正確に答えられます」と添える。",
+      "今の質問テーマ：" + { claude: "Claude", spark: "SparkAI", both: "SparkAI と Claude の比較" }[topic]
+    ].join("\n");
+  }
+
+  const ERR = {
+    not_granted: "Claude の利用が許可されていません。ページの権限設定から許可してください。",
+    sampling_disabled: "このアカウントでは Claude が使えません。",
+    rate_limited: "質問が続いて混み合っています。少し待ってからもう一度どうぞ。",
+    session_expired: "サインインが切れました。claude.ai に再ログインしてください。",
+    refused: "この質問には答えられませんでした。聞き方を変えてみてください。",
+    prompt_too_large: "会話が長くなりすぎました。「会話をリセット」してから質問してください。"
+  };
+
+  async function ask() {
+    const text = q.value.trim();
+    if (!text || busy) return;
+    if (!sample) { $("offline").hidden = false; return; }
+    clearExamples();
+    bubble("me", text);
+    q.value = ""; autosize();
+    turns.push({ role: "user", content: text });
+    const t = topic;
+    const { m, body } = bubble("ai", "考えています…", t);
+    body.classList.add("thinking");
+    busy = true; send.disabled = true; stop.hidden = false;
+    ctl = new AbortController();
+    const recent = turns.slice(-10);
+    try {
+      const res = await sample([{ role: "user", content: rules() }, ...recent], {
+        modelTier: "quick", cache: false, signal: ctl.signal,
+        onText: ({ text }) => { body.classList.remove("thinking"); body.textContent = text; m.scrollIntoView({ block: "end" }); }
+      });
+      turns.push({ role: "assistant", content: res.text });
+      if (res.truncated) note(m, "途中で切れました。続きは「続きを教えて」と聞いてください。");
+    } catch (e) {
+      body.classList.remove("thinking");
+      const code = e && e.code;
+      if (code === "cancelled") {
+        body.textContent = e.text || "（止めました）";
+        if (e.text) turns.push({ role: "assistant", content: e.text }); else turns.pop();
+      } else {
+        body.textContent = code === "refused" ? "" : (e && e.text) || "";
+        if (!body.textContent) { m.querySelector(".body").remove(); }
+        note(m, ERR[code] || "うまく答えられませんでした。もう一度送ってみてください。");
+        turns.pop();
+        if (code === "not_granted" || code === "sampling_disabled") setStatus(false, "Claude 未接続");
+      }
+    } finally {
+      busy = false; send.disabled = false; stop.hidden = true; ctl = null; q.focus();
+    }
+  }
+  function note(m, t) { const n = document.createElement("span"); n.className = "note"; n.textContent = t; m.append(n); }
+
+  stop.onclick = () => ctl && ctl.abort();
+  $("form").addEventListener("submit", (e) => { e.preventDefault(); ask(); });
+  q.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); ask(); }
+  });
+  function autosize() { q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 160) + "px"; }
+  q.addEventListener("input", autosize);
+  $("clear").onclick = () => { if (ctl) ctl.abort(); turns = []; cleared = true; log.textContent = ""; q.focus(); };
+
+  function setStatus(on, txt) { $("status").dataset.on = on ? "1" : "0"; $("statusText").textContent = txt; }
+
+  if (window.claude && window.claude.use) {
+    window.claude.use("sample").then((s) => {
+      sample = s;
+      if (s) setStatus(true, "すぐ答えます");
+      else { setStatus(false, "Claude 未接続"); $("offline").hidden = false; }
+    }).catch(() => { setStatus(false, "Claude 未接続"); $("offline").hidden = false; });
+  } else {
+    setStatus(false, "Claude 未接続"); $("offline").hidden = false;
+  }
+})();
+</script>
