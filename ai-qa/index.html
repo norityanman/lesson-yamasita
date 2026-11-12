@@ -14,6 +14,7 @@
   --claude: #c25a2c;  --claude-bg: #fbeee6;
   --spark: #1f7a8c;   --spark-bg: #e3f2f5;
   --both: #5b5fb0;    --both-bg: #ecedf9;
+  --lec: #2f7d32;     --lec-bg: #e6f3e6;
   --me-bg: #18211d;   --me-ink: #f3f5f2;
   --warn: #9a6b00;
   --f-display: "M PLUS 1p", "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -23,12 +24,12 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #121614; --paper: #1b211e; --ink: #e8eeea; --muted: #9eaba4; --line: #2f3833;
   --claude: #f08a5b; --claude-bg: #3a2419; --spark: #5cc3d6; --spark-bg: #15313a;
-  --both: #a3a7f0; --both-bg: #262845; --me-bg: #e8eeea; --me-ink: #121614; --warn: #ffd166;
+  --both: #a3a7f0; --both-bg: #262845; --lec: #7fd483; --lec-bg: #1c3320; --me-bg: #e8eeea; --me-ink: #121614; --warn: #ffd166;
   color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #121614; --paper: #1b211e; --ink: #e8eeea; --muted: #9eaba4; --line: #2f3833;
   --claude: #f08a5b; --claude-bg: #3a2419; --spark: #5cc3d6; --spark-bg: #15313a;
-  --both: #a3a7f0; --both-bg: #262845; --me-bg: #e8eeea; --me-ink: #121614; --warn: #ffd166;
+  --both: #a3a7f0; --both-bg: #262845; --lec: #7fd483; --lec-bg: #1c3320; --me-bg: #e8eeea; --me-ink: #121614; --warn: #ffd166;
   color-scheme: dark; }
 
 * { box-sizing: border-box; }
@@ -50,8 +51,9 @@ h1 small { font-weight: 500; font-size: 13px; color: var(--muted); margin-left: 
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .status[data-on="1"] .dot { background: #2fa36b; }
 
-.topics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 5px; }
+.topics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 5px; }
 .topics button { border: 0; background: transparent; border-radius: 8px; padding: 8px 6px; font-weight: 700; color: var(--muted); }
+.topics button[aria-pressed="true"][data-t="lecture"] { background: var(--lec-bg); color: var(--lec); }
 .topics button[aria-pressed="true"][data-t="claude"] { background: var(--claude-bg); color: var(--claude); }
 .topics button[aria-pressed="true"][data-t="spark"]  { background: var(--spark-bg);  color: var(--spark); }
 .topics button[aria-pressed="true"][data-t="both"]   { background: var(--both-bg);   color: var(--both); }
@@ -70,6 +72,7 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
 .msg.me { align-self: flex-end; align-items: flex-end; }
 .msg.me .body { background: var(--me-bg); color: var(--me-ink); border-bottom-right-radius: 4px; }
 .msg.ai .body { background: var(--paper); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.msg.ai[data-t="lecture"] .who { color: var(--lec); }
 .msg.ai[data-t="claude"] .who { color: var(--claude); }
 .msg.ai[data-t="spark"] .who { color: var(--spark); }
 .msg.ai[data-t="both"] .who { color: var(--both); }
@@ -96,18 +99,35 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
 .micnote { font-size: 12px; color: var(--claude); min-height: 0; }
 .foot { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .foot button { border: 0; background: none; padding: 0; color: var(--muted); text-decoration: underline; font-size: 12px; }
+.hdr-r { display: flex; align-items: center; gap: 12px; }
+.bigbtn { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 3px 12px; font-size: 12px; }
+.bigbtn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.who .time { font-variant-numeric: tabular-nums; margin-left: 8px; }
+.suggest button.ready::before { content: "●"; color: var(--lec); font-size: 9px; margin-right: 5px; vertical-align: 2px; }
+body.big { font-size: 19px; }
+body.big .msg .body { font-size: 24px; line-height: 1.65; padding: 16px 20px; }
+body.big .msg.me .body { font-size: 20px; }
+body.big .msg .who { font-size: 13px; }
+body.big .app { max-width: 1100px; }
+body.big .msg { max-width: 96%; }
+@media (max-width: 520px) { .topics { grid-template-columns: repeat(2, 1fr); } .suggest { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; } .suggest button { flex: none; } }
+.foot .dotg { color: var(--lec); }
 .offline { border: 1px dashed var(--warn); color: var(--warn); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
 @media (prefers-reduced-motion: no-preference) { .msg { animation: rise .18s ease-out; } @keyframes rise { from { transform: translateY(4px); opacity: .6; } } }
 </style>
 
 <div class="app">
   <header>
-    <h1>AIそくとう窓口<small>SparkAI と Claude の質問にすぐ答えます</small></h1>
-    <div class="status" id="status" data-on="0"><span class="dot"></span><span id="statusText">接続を確認中…</span></div>
+    <h1>AIそくとう窓口<small>講義・SparkAI・Claude の質問にすぐ答えます</small></h1>
+    <div class="hdr-r">
+      <button type="button" class="bigbtn" id="big" aria-pressed="false">大きく表示</button>
+      <div class="status" id="status" data-on="0"><span class="dot"></span><span id="statusText">接続を確認中…</span></div>
+    </div>
   </header>
 
   <div class="topics" role="group" aria-label="質問のテーマ">
-    <button id="t-claude" data-t="claude" aria-pressed="true">Claude</button>
+    <button id="t-lecture" data-t="lecture" aria-pressed="true">講義</button>
+    <button id="t-claude" data-t="claude" aria-pressed="false">Claude</button>
     <button id="t-spark" data-t="spark" aria-pressed="false">SparkAI</button>
     <button id="t-both" data-t="both" aria-pressed="false">SparkAI×Claude</button>
   </div>
@@ -122,8 +142,11 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
 
   <main class="log" id="log" aria-live="polite">
     <span class="example-tag">回答例</span>
-    <div class="msg me"><span class="who">あなた</span><div class="body">Claude って何ができるの？</div></div>
-    <div class="msg ai" data-t="claude"><span class="who">CLAUDE について</span><div class="body">Anthropic が作った AI アシスタントです。文章の作成や要約、翻訳、プログラミングの手伝い、資料やデータの読み取りなどができます。claude.ai やスマホアプリで会話できるほか、Claude Code のように開発作業を任せる使い方もあります。</div></div>
+    <div class="msg me"><span class="who">あなた</span><div class="body">API とバックエンドの違いは？</div></div>
+    <div class="msg ai" data-t="lecture"><span class="who">講義について<span class="time">用意した回答</span></span><div class="body">API はウェイター、バックエンドは厨房です。
+・API は注文（リクエスト）と料理（レスポンス）を運ぶだけで、料理はしません
+・ログインや計算、保存などの実際の処理をするのはバックエンド
+・画面 → API → バックエンド → DB と行って、同じ道を戻ってきます</div></div>
   </main>
 
   <div class="composer">
@@ -137,7 +160,7 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
     </form>
     <div class="micnote" id="micnote" aria-live="polite" hidden></div>
     <div class="foot">
-      <span>回答は AI によるものです。料金や最新情報は公式サイトで確認してください。</span>
+      <span><span class="dotg">●</span> は用意した回答ですぐ表示。それ以外は AI がその場で答えます。</span>
       <button type="button" id="clear">会話をリセット</button>
     </div>
   </div>
@@ -145,12 +168,26 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
 
 <script>
 (() => {
+  // よく出る質問は答えを先に用意しておき、押した瞬間に表示する（AIに聞かない）
+  const READY = {
+    "API とバックエンドの違いは？": "API はウェイター、バックエンドは厨房です。\n・API は注文（リクエスト）と料理（レスポンス）を運ぶだけで、料理はしません\n・ログインや計算、保存などの実際の処理をするのはバックエンド\n・画面 → API → バックエンド → DB と行って、同じ道を戻ってきます",
+    "Git と GitHub の違いは？": "Git はセーブする仕組み、GitHub はそのセーブを預けるネットの倉庫です。\n・Git：自分のパソコンの中で変更を記録し、前の状態に戻せる（ゲームのセーブポイント）\n・GitHub：セーブデータをクラウドに預けるサービス。パソコンが壊れても安心\n・写真（Git）と Google フォト（GitHub）の関係に似ています",
+    "リレーションって何？": "テーブル同士を「番号（ID）」でつなぐことです。\n・注文伝票には名前や住所を全部書かず「ユーザーID 1」とだけ書く\n・番号を見れば、ユーザーテーブルで誰かが分かる\n・例：注文101 はユーザー1（田中太郎さん）が商品7（カメラ）を買った記録",
+    "なぜ表を1枚にまとめないの？": "同じ情報を何度も書くことになり、直すのが大変になるからです。\n・田中さんが10回買えば、名前とメールを10回書くことになる\n・住所が変わったら10か所直す必要がある\n・だから名簿・メニュー表・注文伝票に分けて、番号（ID）でつなぎます",
+    "フレームワークって何？": "Web づくりの作業をラクにする道具セットです。\n・パスタは手打ちでも作れるけれど、毎日たくさん作るならパスタマシンが速い、のと同じ\n・このコースでは Next.js（ネクスト・ジェイエス）を使います\n・使いこなすのは Claude Code。名前を知っていれば十分です",
+    "HTML・CSS・JavaScript の違いは？": "置く場所が HTML、見た目が CSS、動きが JavaScript です。\n・HTML：家の骨組み・間取り（見出しやボタンをどこに置くか）\n・CSS：内装（色・大きさ・余白）\n・JavaScript：電気・スマートホーム（押したら動く、候補が出る）",
+    "ビジネスロジックって何？": "そのアプリならではの計算やルールのことで、お店のレシピにあたります。\n・例：合計金額の計算、在庫があるかの確認、会員ならポイント2倍\n・ネットショップなら 小計3,000円＋送料500円＋消費税350円＝合計3,850円 を出す計算\n・この処理をしているのがバックエンドです",
+    "ターミナルで壊してしまわない？": "まず壊れません。いつものクリック操作を文字で打っているだけです。\n・「このフォルダに移動して」「アプリを起動して」と文字で頼んでいるイメージ\n・必要なコマンドは Claude Code がほぼ代わりに打ってくれます\n・おかしくなっても Git のセーブポイントに戻せます",
+    "JavaScript と Java は同じ？": "名前は似ていますが、別のものです。\n・この講義で出てくるのは JavaScript（画面に動きをつける技術）\n・Java は別のプログラミング言語で、今回は使いません\n・「名前が似ている別物」とだけ覚えておけば十分です",
+    "コースと料金を教えて": "主なコースは2つで、どちらも受講期間は365日です。\n・AI業務自動化コース（Claude × n8n × Dify）：¥248,000（税込）、分割なら月々¥21,700から\n・AI駆動開発コース（Claude Code）：¥298,000（税込）、分割なら月々¥26,075から\n・法人向けの事業者プランもあります。最新は公式サイトか無料相談で確認してください"
+  };
   const SUGGEST = {
+    lecture: ["API とバックエンドの違いは？", "HTML・CSS・JavaScript の違いは？", "Git と GitHub の違いは？", "リレーションって何？", "なぜ表を1枚にまとめないの？", "フレームワークって何？", "ビジネスロジックって何？", "ターミナルで壊してしまわない？", "JavaScript と Java は同じ？"],
     claude: ["Claude の無料プランと有料プランの違いは？", "Claude Code って何？", "上手な質問（プロンプト）のコツは？", "Claude に PDF を読ませるには？"],
-    spark:  ["SparkAI ってどんなスクール？", "コースと料金を教えて", "分割払いはできる？", "法人向けプランはある？", "申し込み前に相談できる？"],
+    spark:  ["コースと料金を教えて", "SparkAI ってどんなスクール？", "分割払いはできる？", "法人向けプランはある？", "申し込み前に相談できる？"],
     both:   ["SparkAI で Claude をどう学べる？", "AI業務自動化コースと AI駆動開発コースの違いは？", "プログラミング未経験でも Claude Code を学べる？"]
   };
-  const LABEL = { claude: "CLAUDE について", spark: "SPARKAI について", both: "SparkAI × Claude" };
+  const LABEL = { lecture: "講義について", claude: "CLAUDE について", spark: "SPARKAI について", both: "SparkAI × Claude" };
   const SPARK_FACTS = [
     "SparkAI（https://sparkai.jp/）は、株式会社ReFast が運営する、実践で使えるAIスキルを学ぶオンラインスクール。n8n・Dify を使ったAI業務自動化から、Claude Code を使ったAI駆動開発までを扱う。",
     "・AI業務自動化コース（Claude × n8n × Dify）：受講期間365日、¥248,000（税込）。12回分割で月々¥21,700から。",
@@ -161,9 +198,11 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
     "・支払いはクレジットカードが中心。申し込み前に無料相談（オンライン、30分程度）があり、コース提案や支払い方法を案内している。問い合わせは https://sparkai.jp/contact 、法人は https://sparkai.jp/business 。",
     "（この情報は2026年11月時点で確認したもの。）"
   ].join("\n");
+  // lesson01/chapter2-slides.html から抜き出したスライド本文と講師メモ（スライドを直したらここも更新）
+  const LECTURE = "[はじめに 表紙] 第2章 Claude Code を使う前に Webアプリは レストラン と同じ コードは書かなくて大丈夫。 しくみが分かると、AIへの頼み方がうまくなります。 客席＝フロントエンド ウェイター＝API 厨房＝バックエンド 食材庫＝データベース 4つの色（青・紫・オレンジ・緑）はスライド全体で同じ意味。色で覚えてもらうと後半が楽になる。 ／講師メモ: 最初に「今日はコードを書かない」「覚えることは少ない」と伝えて安心してもらう。\n[はじめに 今日の進め方] はじめに 今日の進め方とマークの見方 今日の流れ（約6パート） 2.1 Webアプリの全体像（レストランのたとえ） 2.2 画面＝フロントエンド 2.3 裏側＝バックエンド 2.4 データベース 2.5 開発の道具（VS Code・ターミナル・Git） 2.6 まとめとチェックリスト たとえ 身近なものに置きかえた説明。 まずはここだけ 分かればOK。 つまずき注意 初めての人が 混乱しやすいところ 。ゆっくり進めます。 覚えなくてOK 名前だけ聞いたことがあれば十分。 Claude Code がやってくれます 。 操作：←→キー／スペースで移動、Oで一覧、Nでこのメモの表示切替。 ／講師メモ: 3つのマークを先に紹介しておくと、受講者が「ここは覚えなくていいんだ」と自分で判断できる。\n[2.1 Webアプリ＝レストラン] 2.1 Webアプリは、4つの係で動くレストラン 客席 フロントエンド ダイニングルーム お客さんが座る場所 ユーザーが直接見る 画面・ボタン・入力欄 給仕 API ウェイター 注文と料理を運ぶ人 フロントとバックの間で やり取りを仲介 厨房 バックエンド キッチン お客さんからは見えない ログイン・計算・メール送信などの 裏側の処理 食材 データベース 食材庫（パントリー） 材料をしまっておく棚 ユーザー情報・商品・注文履歴を 保管 たとえ お客さんは 客席 しか見ません。でも裏では、ウェイターが走り、厨房が料理し、食材庫から材料が出てきます。Webアプリも同じです。 APIは一番イメージしにくい言葉なので、ここでは「ウェイター」とだけ言えればOK。次のスライドで動きを見せる。 ／講師メモ: 「お店に入ったとき、見えているのはどこ？」と問いかけてから、客席＝画面とつなげる。\n[2.1 注文の流れ] 2.1 「購入」ボタンを押すと、裏で何が起きる？ 客席 フロント 画面 給仕 API ウェイター 厨房 バック キッチン 食材 DB 食材庫 1 レストランでは Webアプリでは 受講者に「今どこが光ってる？」と聞くと参加感が出る。 ／講師メモ: 「次のステップ」ボタンを押しながら1つずつ話す。4まで行ったら「この往復が全部のWebアプリに共通」と強調。\n[2.1 リクエストとレスポンス] 2.1 「リクエスト」と「レスポンス」は、注文と料理 つまずき注意 ユーザー 画面でボタンを押す人 リクエスト 「この商品を買いたいです」 レスポンス 「購入できました」 サーバー バックエンドとDBがいる場所 カタカナが多くて混乱しやすい リクエスト ＝お願い・注文（行き） レスポンス ＝返事・料理（帰り） API ＝それを運ぶ窓口（ウェイター） たとえ 「要求 → 処理 → 結果」の 往復 は、LINEで「今どこ？」と送って「駅だよ」と返ってくるのと同じ形です。 質問されやすい：「APIとバックエンドの違いは？」→ ウェイターは料理しない、運ぶだけ。料理するのは厨房（バック）。 ／講師メモ: リクエスト/レスポンスは英語のままでも、日本語の「お願い/返事」に言い換えれば理解できる。\n[2.1 なぜ構造を知るのか] 2.1 しくみを知ると「どこが悪いか」当てられる Claude Code に「ログイン機能を作って」と頼むと、4つ全部をまとめて作ってくれます。困るのは うまく動かないとき 。カードを押して、どこが悪そうか考えてみましょう。 3つ目は答えが1つに決まらない例。「分からないときは Claude Code に調べてもらえばいい」でOK。 ／講師メモ: 正解を当てることより「場所の候補を考える」ことが大事、と伝える。\n[2.2 フロントの3技術] 2.2 画面は3つの技術でできている たとえ：家づくり HTML 骨組み・間取り 見出し・ボタン・画像を どこに置くか を決める CSS 内装・デザイン 色・大きさ・余白など 見た目 を整える JavaScript 電気・スマートホーム 押したら動く・スクロールで変わる 動き をつける 骨組み（HTML） がないと内装はつけられないし、 電気（JS） がなくても家には住めます。でも、スイッチを押して明かりがつくと便利ですよね。 「JavaScriptとJavaは別物」は聞かれたら答える程度でOK。 ／講師メモ: 3つの小さな図は同じ間取り。HTMLは点線（骨組みだけ）、CSSで色と丸み、JSでボタンが脈打つ（動く）と見せる。\n[2.2 Google検索で見る役割分担] 2.2 いつもの検索ページで見てみると 検索サイト ラーメン 渋 ラーメン 渋谷 ラーメン 渋谷 深夜 ラーメン 渋谷 駅近 HTML 検索ボックスがページの 真ん中にある CSS 角が 丸く 、白い背景に 影 がついている JavaScript 文字を打つと 候補がすぐ出てくる 「置く場所＝HTML」「見た目＝CSS」「動く＝JS」の3語だけ覚えればOK。 ／講師メモ: 可能なら実際にGoogleを開いて、文字を打って候補が出る様子を見せると一番伝わる。\n[2.2 フレームワーク] 2.2 フレームワーク＝効率化の道具セット つまずき注意 たとえ：パスタマシン パスタは手打ちでも作れます。でも毎日たくさん作るなら パスタマシン を使ったほうが速くてきれい。 Webも同じで、HTML/CSS/JSだけでも作れますが、大きなアプリは フレームワーク という道具セットを使います。 「フレームワーク」という言葉で止まりやすい 難しく考えなくて大丈夫。 「作業をラクにする道具」 と言いかえてOKです。 覚えなくてOK このコースでは Next.js（ネクスト・ジェイエス） を使います。 使いこなすのは Claude Code。みなさんは「画面を作るときの道具の名前」と知っていれば十分です。 ／講師メモ: 読み方「ネクスト・ジェイエス」を一度声に出しておくと、後で Claude Code の画面に出てきたときに戸惑わない。\n[2.2 画面の指示のコツ] 2.2 3つを意識すると、指示が具体的になる Claude Code への指示の例。ボタンを押すと、どの技術の話か色分けされます。 トップページに大きなヘッダー画像を 配置して 、その下に3つのカードを 横並びに 表示して、それぞれ クリックしたら詳細ページに移動する ようにして 配置して＝HTML 大きな・横並び＝CSS クリックしたら移動＝JavaScript あいまいな頼み方 「いい感じのトップページにして」 伝わる頼み方 「何を・どんな見た目で・押したらどうなるか」を言う 受講者に自分のお店・サービスのトップページを想像して、1文で指示を作ってもらうワークにしてもよい。 ／講師メモ: 「大きな」はCSSの話なので、上の文では「大きな」も紫の仲間、と補足する。\n[2.3 キッチンで起きていること] 2.3 厨房（バックエンド）で起きていること 1 シェフが注文を確認 リクエストの中身を読む 2 食材庫の在庫を確認 データベースに問い合わせる 3 レシピ通りに調理 ビジネスロジックを実行（計算・判定） 4 ウェイターに料理を渡す 結果をフロントに返す たとえ お客さんは厨房の中を見られません。でも、料理が出てくるのは厨房がちゃんと働いているから。 見えないけど一番忙しい場所 です。 ／講師メモ: 上段がレストラン、オレンジの下段がWebアプリ。2.1の「注文の流れ」の3番を、拡大して見ているイメージ。\n[2.3 ビジネスロジック] 2.3 「ビジネスロジック」＝お店のレシピ つまずき注意 言葉がかたくて身構えやすい 意味はシンプル。 「そのアプリならではの計算やルール」 のことです。 例：合計金額の計算／在庫があるかの確認／会員ならポイント2倍 たとえ レシピ ＝プログラム。「こんな注文が来たら、この手順で作って、こう出す」という 手順書 です。 例：ネットショップの会計 小計 3,000円 ＋ 送料 500円 ＋ 消費税（10%） 350円 合計 3,850円 この計算をしているのがバックエンドのレシピ 税は（3,000＋500）×10%＝350円。送料にも消費税がかかる点は聞かれたら補足。 ／講師メモ: 「ビジネスロジック＝そのお店のルール」と言い換えるのが一番伝わる。\n[2.3 バックエンドの仕事] 2.3 バックエンドの代表的な仕事 ログイン IDとパスワードを照らし合わせて、本人か確かめる データの保存 投稿・購入・登録をデータベースに書き込む 計算・変換 「小計＋送料＋税＝合計」などを出す 外部サービス連携 決済（Stripe）・メール送信・他社のAPIを呼ぶ 覚えなくてOK Python （パイソン）＝読み書きしやすいプログラミング言語 FastAPI （ファスト・エーピーアイ）＝Pythonで裏側を速く作る道具 あなたの立場 みなさんは レストランのオーナー 。 レシピを書くのはシェフ（Claude Code）。オーナーは「こんな料理を出したい」と伝える係です。 Stripe＝ネット決済のサービス。名前だけでOK。 ／講師メモ: 「オーナー」の立場を強調すると、非エンジニアの受講者が自分の役割をイメージしやすい。\n[2.3 切り分けて伝える] 2.3 場所が分かると、頼み方が変わる こんな症状 あやしい場所 Claude Code への頼み方 画面は出るのに、データが保存されない バック か DB 「バックエンドのデータ保存処理を確認して」 ログインできない バックの認証処理 「ログインAPIのパスワード照合の処理を確認して」 しくみを知らないと 「うまく動きません」 しくみを知っていると 「画面は出るけど、保存のところで止まっているみたい。バックエンドを見て」 ／講師メモ: 完璧に当てなくてOK。「たぶんここ」と添えるだけでClaude Codeの調査が速くなる、と伝える。\n[2.4 テーブル＝Excelの表] 2.4 データベースの中身は「Excelの表」 たとえ：整理された食材庫 良い食材庫は種類ごとに棚が分かれ、ラベルと在庫数がついています。データベースも、データの種類ごとに テーブル（表） を分けてしまっておきます。 ユーザーID 名前 メールアドレス 登録日 1 田中太郎 tanaka@example.com 2026-01-15 2 鈴木花子 suzuki@example.com 2026-02-20 3 佐藤次郎 sato@example.com 2026-03-10 ボタンを押すと表の一部が光ります 行＝横1本＝1人分、列＝縦1本＝項目。ボタンで光らせながら説明。 ／講師メモ: 「Excelを触ったことがある人？」と聞くと、多くの人が手を挙げるので安心感が出る。\n[2.4 1つのアプリに複数のテーブル] 2.4 アプリには、いくつもテーブルがある ネットショップの場合。レストランなら「お客様名簿」「メニュー表」「注文伝票」を別々の棚に置くイメージです。 ユーザー お客様名簿 名前／メール／住所 商品 メニュー表 商品名／価格／在庫／説明文 注文 注文伝票 誰が・いつ・何を買ったか つまずき注意 「なぜ1枚の表にまとめないの？」→ 全部1枚にすると、田中さんが10回買えば名前とメールを10回書くことになり、 住所が変わったら10か所直す はめになります。次のスライドで解決方法を見ます。 ／講師メモ: この疑問は実際によく出る。次の「リレーション」への橋渡しにする。\n[2.4 リレーション] 2.4 テーブル同士は「番号」でつながる（リレーション） つまずき注意 注文テーブルの ユーザーID や 商品ID を押してみてください。つながっている行が光ります。 注文テーブル（注文伝票） 注文ID ユーザーID 商品ID 注文日 101 1 7 2026-04-01 102 2 8 2026-04-03 ユーザーテーブル ID 名前 1 田中太郎 2 鈴木花子 3 佐藤次郎 商品テーブル ID 商品名 7 カメラ 8 三脚 たとえ 注文伝票に「田中太郎さん、住所…、電話…」と全部書かず、 「3番テーブルのお客様」 とだけ書くのと同じ。番号を見れば名簿で調べられます。 「注文101は、誰が何を買った？」とクイズにして、受講者にIDをたどってもらう（答え：田中太郎さんがカメラ）。 ／講師メモ: この章で一番つまずきやすい所。「ID＝出席番号」と言い換えるのも効果的。\n[2.4 データの伝え方] 2.4 あなたが伝えるのは「どんなデータを扱うか」 テーブルの設計は Claude Code がやってくれます。でも 何を記録したいか は、お店のオーナーにしか分かりません。 指示の例 「ユーザーは 名前 と メール で登録できるようにして。商品には 名前・価格・説明文・画像 を持たせて。ユーザーが商品を 購入した記録 も残して。」 3つの言葉を使えると強い テーブル ＝表、 項目（カラム） ＝列、 リレーション ＝番号でのつながり 覚えなくてOK このコースでは PostgreSQL （ポストグレス・キューエル）を使います。無料で広く使われているデータベースの名前です。 ／講師メモ: PostgreSQLは「ポスグレ」と略されることも多い、と一言添える。\n[2.5 開発の3つの道具] 2.5 開発で使う3つの道具 深く覚えなくてOK VS Code 大工さんの作業場 プログラムを書くためのアプリ。ファイル一覧と編集画面が1つになっている ターミナル コンピュータとの会話窓口 文字を打ってコンピュータに指示を出す、黒い画面 Git ゲームのセーブポイント ファイルの変更を記録して、いつでも前の状態に戻れる ここで大事なのは使い方ではなく、 「何のための道具か」 を知っておくこと。操作のほとんどは Claude Code が代わりにやってくれます。 ／講師メモ: このパートは「覚えなくてOK」を強めに。名前と役割が一致すれば十分。\n[2.5 ターミナル] 2.5 ターミナル＝文字で話しかける窓 つまずき注意 $ cd my-shop $ npm run dev ✓ 起動しました http://localhost:3000 「黒い画面」がこわく見える いつものマウス操作（クリック）を、 文字で打っているだけ です。こわしてしまうことは、まずありません。 たとえ スマホの 音声アシスタント に話しかけるのを、文字でやっているイメージ。「このフォルダに移動して」「アプリを起動して」と頼んでいます。 必要なコマンドは Claude Code がほぼ代わりに打ってくれるので、自分で打つ場面は少なめです。 ／講師メモ: 例の意味：cd＝フォルダに移動、npm run dev＝アプリを試しに起動。意味は覚えなくてOK。\n[2.5 Git＝セーブポイント] 2.5 Git＝ゲームのセーブポイント セーブ1 トップページ完成 セーブ2 ログイン完成 作業中 商品一覧を追加中… セーブ＝ コミット と呼びます GitHub セーブデータを クラウドに預ける サービス。パソコンが壊れても安心。 つまずき注意 Git ＝セーブする仕組み（自分のパソコンの中） GitHub ＝セーブを預けるネットの倉庫 名前が似ていますが、別のものです。 GitとGitHubの違いはよく混同される。「写真（Git）とGoogleフォト（GitHub）」のたとえも使える。 ／講師メモ: ボタンで「壊れた→戻す」を実演。ゲームのセーブを知っている人には一発で伝わる。\n[2.5 VS Codeに全部入り] 2.5 3つとも VS Code の中にそろっている ファイル一覧 app/  page.tsx  style.css README.md 編集画面＋Claude Code ターミナル（下） $ npm run dev 作業場 VS Code 本体 ターミナル 画面の下に表示される Git 左の ソース管理 アイコン（緑） AI Claude Code も VS Code の中で動く 第3章で実際の VS Code を開くので、ここでは配置のイメージだけ。 ／講師メモ: アプリを切り替えなくても、VS Code ひとつで作業が終わる、がポイント。\n[2.6 第2章まとめ] 2.6 第2章のまとめ フロント 客席 見える画面 HTML／CSS／JavaScript API ウェイター フロントとバックの仲介 リクエスト↔レスポンス バック 厨房 裏側の処理・ビジネスロジック Python＋FastAPI DB 食材庫 テーブル（表）で保管 IDでつながる／PostgreSQL VS Code 作業場（エディタ） ターミナル 文字でコンピュータに指示 Git / GitHub セーブと、クラウドへの保管 ／講師メモ: この1枚で振り返り。色を指して「青は？」「緑は？」と受講者に答えてもらうと定着する。\n[2.6 なぜ学んだのか] 2.6 なぜ、エンジニアでなくてもこれを学ぶの？ コードを書くためではなく、 Claude Code に 的確に頼むため 。 知識がないと 知識があると 「うまく動かない」とだけ伝える 「画面は出るけど、バックの保存処理でエラーが出る」と切り分けられる Claude Code が何を作っているか分からない テーブルの設計や API の動きを把握しながら進められる ／講師メモ: ここで「今日の内容はテストに出る暗記ではない」ともう一度安心させる。\n[2.6 チェックリスト] 2.6 チェックリスト：言えたらチェック レストランの4つの係（フロント / バック / DB / API）を説明できる ヒント：客席・厨房・食材庫・ウェイター HTML / CSS / JavaScript の役割の違いを言える ヒント：骨組み・内装・電気 テーブルとリレーションのイメージが持てる ヒント：Excelの表と、番号でのつながり VS Code・ターミナル・Git が何のための道具か言える ヒント：作業場・会話窓口・セーブポイント ／講師メモ: 隣の人とペアになって、1人1項目ずつ説明し合うと効果的。言えなかった項目だけスライドに戻って復習（Oキーで一覧から戻れる）。\n[2.6 次章へ] 次の章 第3章 Claude Code を 動かしてみよう インストール → ログイン → はじめての指示 まで、 実際に手を動かして進めます。 ／講師メモ: 休憩を挟むならここ。第3章の前に、VS Code が入っているか確認しておくとスムーズ。";
   const $ = (id) => document.getElementById(id);
   const log = $("log"), q = $("q"), send = $("send"), stop = $("stop"), memo = $("memo");
-  let topic = "claude", turns = [], sample = null, ctl = null, busy = false, cleared = false;
+  let topic = "lecture", turns = [], sample = null, ctl = null, busy = false, cleared = false;
 
   const store = {
     get(k) { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
@@ -177,6 +216,7 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
     const box = $("suggest"); box.textContent = "";
     for (const s of SUGGEST[topic]) {
       const b = document.createElement("button"); b.type = "button"; b.textContent = s;
+      if (READY[s]) b.className = "ready";
       b.onclick = () => { q.value = s; ask(); };
       box.append(b);
     }
@@ -185,9 +225,11 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
     b.onclick = () => {
       topic = b.dataset.t;
       document.querySelectorAll(".topics button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      $("memoBox").hidden = topic === "lecture";
       renderSuggest(); q.focus();
     };
   });
+  $("memoBox").hidden = true;
   renderSuggest();
 
   function clearExamples() {
@@ -198,6 +240,7 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
     if (t) m.dataset.t = t;
     const who = document.createElement("span"); who.className = "who";
     who.textContent = kind === "me" ? "あなた" : LABEL[t];
+    if (kind === "ai") { const tm = document.createElement("span"); tm.className = "time"; who.append(tm); }
     const body = document.createElement("div"); body.className = "body"; body.textContent = text;
     m.append(who, body); log.append(m);
     m.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -206,15 +249,17 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
 
   function rules() {
     const sp = memo.value.trim();
+    const lec = topic === "lecture";
     return [
-      "あなたは「AIそくとう窓口」の回答係です。SparkAI と Claude（Anthropic の AI アシスタント）についての質問に、日本語で、すぐ読める短さで答えてください。",
-      "・最初の1〜2文で結論を言い、必要なら箇条書き（「・」）で3〜5点補足する。全体で300字程度まで。Markdown の見出しや太字記号は使わない。",
+      "あなたは講義中の「AIそくとう窓口」の回答係です。講師が受講生の質問を入力し、答えはプロジェクターに映されます。受講生はプログラミング未経験の人が中心です。日本語で、5秒で読める短さで答えてください。",
+      "・最初の1文で結論を言い、続けて箇条書き（「・」）で2〜3点だけ補足する。全体で150字程度まで。Markdown の見出しや太字記号は使わない。専門用語はかみくだく。",
+      lec ? "・講義の内容（第2章「Webアプリのしくみ」）についての質問には、下のスライド本文と講師メモに沿って、スライドと同じたとえ（レストラン：客席＝フロント、ウェイター＝API、厨房＝バック、食材庫＝DB など）で答える。スライドにないことも、未経験者向けにやさしく答えてよい。\n--- スライド ---\n" + LECTURE + "\n--- ここまで ---" : "",
       "・料金・プラン・最新機能など変わりやすい情報は、知っている範囲で答えたうえで「最新は公式サイトで確認を」と一言添える。",
       "・知らないこと、確信のないことは推測で断定せず、そう伝える。",
-      "・この窓口でいう SparkAI は次のスクールのこと（同名の別サービスと混同しない）。SparkAI の質問にはこの情報だけを根拠に答え、ここにないこと（講師名、合格率、返金条件など）は「公式サイトか無料相談で確認してください」と案内する：\n" + SPARK_FACTS,
-      sp ? "・ユーザーが追加した最新メモ（上の情報と食い違う場合はこちらを優先）：\n" + sp.slice(0, 4000) : "",
-      "今の質問テーマ：" + { claude: "Claude", spark: "SparkAI", both: "SparkAI で学べる Claude 関連のこと" }[topic]
-    ].join("\n");
+      lec ? "" : "・この窓口でいう SparkAI は次のスクールのこと（同名の別サービスと混同しない）。SparkAI の質問にはこの情報だけを根拠に答え、ここにないこと（講師名、合格率、返金条件など）は「公式サイトか無料相談で確認してください」と案内する：\n" + SPARK_FACTS,
+      sp && !lec ? "・ユーザーが追加した最新メモ（上の情報と食い違う場合はこちらを優先）：\n" + sp.slice(0, 4000) : "",
+      "今の質問テーマ：" + { lecture: "講義の内容", claude: "Claude", spark: "SparkAI", both: "SparkAI で学べる Claude 関連のこと" }[topic]
+    ].filter(Boolean).join("\n");
   }
 
   const ERR = {
@@ -229,6 +274,16 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
   async function ask() {
     const text = q.value.trim();
     if (!text || busy) return;
+    const ready = READY[text];
+    if (ready) {
+      clearExamples();
+      bubble("me", text);
+      q.value = ""; autosize();
+      const { m, body } = bubble("ai", ready, topic);
+      m.querySelector(".time").textContent = "用意した回答";
+      turns.push({ role: "user", content: text }, { role: "assistant", content: ready });
+      return;
+    }
     if (!sample) { $("offline").hidden = false; return; }
     clearExamples();
     bubble("me", text);
@@ -239,11 +294,16 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
     body.classList.add("thinking");
     busy = true; send.disabled = true; stop.hidden = false;
     ctl = new AbortController();
-    const recent = turns.slice(-10);
+    // 速さのため、前の1往復と今の質問だけを送る（「もっと詳しく」は通じる）
+    const recent = turns.slice(-3);
+    const t0 = performance.now(); let first = true;
+    const tm = m.querySelector(".time");
     try {
       const res = await sample([{ role: "user", content: rules() }, ...recent], {
         modelTier: "quick", cache: false, signal: ctl.signal,
-        onText: ({ text }) => { body.classList.remove("thinking"); body.textContent = text; m.scrollIntoView({ block: "end" }); }
+        onText: ({ text }) => {
+          if (first) { first = false; tm.textContent = ((performance.now() - t0) / 1000).toFixed(1) + "秒で回答"; }
+          body.classList.remove("thinking"); body.textContent = text; m.scrollIntoView({ block: "end" }); }
       });
       turns.push({ role: "assistant", content: res.text });
       if (res.truncated) note(m, "途中で切れました。続きは「続きを教えて」と聞いてください。");
@@ -319,6 +379,11 @@ details.memo textarea { width: 100%; min-height: 90px; resize: vertical; border:
   if (window.claude && window.claude.use) {
     window.claude.use("dictation").then((d) => { if (d) setupDictation(d); }).catch(() => {});
   }
+
+  const big = $("big");
+  function setBig(on) { document.body.classList.toggle("big", on); big.setAttribute("aria-pressed", String(on)); store.set("big", on ? "1" : ""); }
+  setBig(store.get("big") === "1");
+  big.onclick = () => setBig(!document.body.classList.contains("big"));
 
   function setStatus(on, txt) { $("status").dataset.on = on ? "1" : "0"; $("statusText").textContent = txt; }
 
