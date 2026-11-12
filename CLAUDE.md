@@ -21,7 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 変更したら、同じファイルパスを Artifact ツールで公開し直して上記 URL を更新する。runtime capabilities は `sample`（Claude への質問）と `dictation`（音声入力）を宣言している。capabilities を渡し直すときは、この2つをそろえて宣言する（渡したものだけが残る）。
 - Claude への質問は `claude.use("sample")` を使い、`modelTier: "quick"` で回答をストリーミング表示する。指示文は `rules()` で組み立てて、会話の先頭の user ターンとして毎回送る。
 - SparkAI は株式会社ReFast のAIスクール（https://sparkai.jp/）のこと。コース・料金などの事実は `SPARK_FACTS` 配列にまとめてあり、情報が変わったらここを直す。画面の「SparkAI 追加メモ」（localStorage に保存）の内容は `SPARK_FACTS` より優先される。
-- 講義の内容は `LECTURE` 定数に、`lesson01/chapter2-slides.html` から抜き出したスライド本文と講師メモとして埋め込んである。スライドを直したら、ここも抜き出し直す。`LECTURE` は「講義」テーマのときだけ、`SPARK_FACTS` はそれ以外のテーマのときだけ指示文に入れる（指示文を短くして答え始めを速くするため）。
+- 講義の内容は `LECTURE` 定数に、`lesson01/chapter2-slides.html` から抜き出したスライド本文と講師メモとして埋め込んである。スライドを直したら、ここも抜き出し直す。`LECTURE` は「講義」テーマのときだけ指示文に入れる（指示文を短くして答え始めを速くするため）。`SPARK_FACTS` は短いので、講義テーマで SparkAI を聞かれても正しく答えられるよう全テーマで入れる。
 - 速さのために、答えは150字程度にしてある。送る会話は前の1往復と今の質問だけ（`turns.slice(-3)`）。`READY` に入っている質問は Claude に聞かず、用意した答えをすぐ表示する（質問ボタンの ● 印）。
 - 音声入力は `claude.use("dictation")` を使う。`d.start()` は、クリックの処理の中で await を挟まずに呼ぶ必要がある。マイクをもう一度押すと聞き取りを止め、そのまま `ask()` で送信する。
 
