@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>予約の管理（オーナー用） | Nail Salon Sample</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Zen+Maru+Gothic:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+/* ===== 管理ページだけの見た目 ===== */
+.admin .section{padding:48px 0 72px}
+.admin-note{font-size:14px;color:var(--sub);text-align:center}
+.panel{padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.panel h3{font-size:18px;font-weight:700;display:flex;align-items:center;gap:10px}
+.step{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:14px;flex:0 0 auto}
+.panel .hint{font-size:14px;color:var(--sub)}
+textarea{width:100%;min-height:180px;padding:14px;border:1px solid var(--gold-light);border-radius:12px;background:var(--bg);font:inherit;font-size:14px;color:var(--text);resize:vertical}
+textarea:focus-visible,.admin button:focus-visible,.admin input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.admin button.btn{border:none;cursor:pointer;font-family:inherit}
+.admin button.btn:disabled{opacity:.4;cursor:default}
+.btn-small{padding:10px 20px;font-size:14px}
+
+.notice{border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.notice.empty{color:var(--sub);font-size:15px;text-align:center}
+.notice .kind{font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--accent)}
+.notice .main{font-size:18px;font-weight:700}
+.notice .change{display:flex;align-items:center;gap:10px;font-size:17px}
+.notice .warn{background:#FBEFE3;color:#7A4510;border-radius:10px;padding:10px 14px;font-size:14px}
+.notice.error{background:#FBEBEC}
+.notice.error .main{color:#8A2F37}
+.notice.done{background:#EAF3EC}
+.notice.done .main{color:#2E6B4A}
+
+.st{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:999px;background:var(--white);border:1px solid var(--line);font-size:15px;font-weight:700}
+.st.s-open{color:#2E6B4A}.st.s-few{color:#9A5B12}.st.s-full,.st.s-off{color:#6B6258}.st.s-none{color:var(--sub)}
+
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.list li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:15px}
+.list li:last-child{border-bottom:none}
+.list .date{font-weight:700;min-width:120px}
+.list .time{font-size:13px;color:var(--sub);min-width:120px}
+.list .grow{flex:1 1 auto}
+.linkish{background:none;border:none;padding:6px 4px;color:var(--accent);text-decoration:underline;cursor:pointer;font:inherit;font-size:14px}
+.empty-text{color:var(--sub);font-size:14px}
+
+.settings{display:flex;flex-wrap:wrap;gap:12px 28px;font-size:15px}
+.settings label{display:flex;align-items:center;gap:8px}
+.settings input{width:64px;padding:8px;border:1px solid var(--gold-light);border-radius:8px;font:inherit;text-align:center;background:var(--white)}
+.danger{color:#8A2F37}
+</style>
+</head>
+<body class="admin">
+
+<header class="site-header">
+  <div class="wrap">
+    <span class="logo">Nail Salon Sample</span>
+    <nav aria-label="メニュー">
+      <a href="reserve.html">空き状況ページを見る</a>
+      <a href="index.html">ホームページを見る</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="section">
+    <div class="wrap narrow stack" style="gap:24px">
+      <div class="heading"><p class="en">Admin</p><h2>予約の管理（オーナー用）</h2></div>
+      <p class="admin-note">このページはオーナーさん専用です。お客様には見せないでください。<br>お客様の名前や電話番号は、このページには残りません。</p>
+
+      <!-- ① メールを貼りつける -->
+      <div class="card panel">
+        <h3><span class="step">1</span>ホットペッパーのメールを貼りつける</h3>
+        <p class="hint">予約・キャンセル・日にち変更のメールの文章を、ぜんぶコピーしてここに貼りつけてください。</p>
+        <label for="mail" class="hint" style="position:absolute;left:-9999px">メールの文章</label>
+        <textarea id="mail" placeholder="ここにメールの文章を貼りつけます"></textarea>
+        <div class="row">
+          <button type="button" class="btn btn-small" id="read">読みとる</button>
+          <button type="button" class="linkish" id="clear">消す</button>
+        </div>
+      </div>
+
+      <!-- ② お知らせ -->
+      <div class="card panel">
+        <h3><span class="step">2</span>お知らせ</h3>
+        <div id="notice" class="notice empty" aria-live="polite">メールを読みとると、ここにお知らせが出ます。</div>
+      </div>
+
+      <!-- ③ ホームページに反映 -->
+      <div class="card panel">
+        <h3><span class="step">3</span>ホームページに反映する</h3>
+        <p class="hint">OK した変更は、まだホームページには出ていません。下のボタンで新しい <code>availability.js</code> を保存して、<code>nail-salon</code> フォルダの今のファイルと入れかえてください。</p>
+        <ul class="list" id="pending"></ul>
+        <div class="row">
+          <button type="button" class="btn btn-small" id="download">新しい availability.js を保存する</button>
+        </div>
+      </div>
+
+      <!-- ④ 記録と設定 -->
+      <div class="card panel">
+        <h3><span class="step">4</span>これまでの記録</h3>
+        <p class="hint">日にちと、何をしたかだけを残しています（新しい順・30件まで）。</p>
+        <ul class="list" id="log"></ul>
+      </div>
+
+      <div class="card panel">
+        <h3><span class="step">5</span>設定</h3>
+        <p class="hint">1日に何件の予約で、空き状況を変えるかを決めます。</p>
+        <div class="settings">
+          <label>△ 残りわずか：<input type="number" id="few" min="1" max="20">件から</label>
+          <label>× 満席：<input type="number" id="full" min="1" max="20">件から</label>
+        </div>
+        <p class="hint" id="count-summary"></p>
+        <div class="row">
+          <button type="button" class="linkish danger" id="reset">記録をぜんぶ消す</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="availability.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- 保存（このパソコンのブラウザの中だけ） ---------- */
+  var KEY = "nailSalonAdmin.v1";
+  function load() {
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY));
+      if (s && typeof s === "object") return s;
+    } catch (e) {}
+    return null;
+  }
+  var state = load() || {};
+  state.bookings = state.bookings || {};   // 予約番号 → 日にち（名前などは入れない）
+  state.changes = state.changes || {};     // OK したけど、まだ availability.js に入っていない変更
+  state.log = state.log || [];
+  state.few = state.few || 1;
+  state.full = state.full || 2;
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch (e) { alert("このブラウザでは記録を保存できませんでした。ページを閉じると記録が消えます。"); }
+  }
+
+  /* ---------- 空き状況 ---------- */
+  var fileData = window.AVAILABILITY || {};
+  var hotpepperUrl = window.HOTPEPPER_URL || "https://beauty.hotpepper.jp/";
+  var LABEL = { "空き": "◎ 空き", "残りわずか": "△ 残りわずか", "満席": "× 満席", "休み": "休 お休み" };
+  var CLS = { "空き": "s-open", "残りわずか": "s-few", "満席": "s-full", "休み": "s-off" };
+  var WEEK = ["日", "月", "火", "水", "木", "金", "土"];
+
+  // ファイルにもう入っている変更は「反映ずみ」として消す
+  Object.keys(state.changes).forEach(function (k) {
+    if (fileData[k] === state.changes[k]) delete state.changes[k];
+  });
+  save();
+
+  function current(key) {
+    return Object.prototype.hasOwnProperty.call(state.changes, key) ? state.changes[key] : fileData[key];
+  }
+  function countOn(key) {
+    var n = 0;
+    Object.keys(state.bookings).forEach(function (no) { if (state.bookings[no] === key) n++; });
+    return n;
+  }
+  function statusFor(n) {
+    if (n >= state.full) return "満席";
+    if (n >= state.few) return "残りわずか";
+    return "空き";
+  }
+
+  /* ---------- 日にち ---------- */
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function toKey(y, m, d) { return y + "-" + pad(m) + "-" + pad(d); }
+  function jp(key) {
+    var p = key.split("-"), d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return (+p[1]) + "月" + (+p[2]) + "日（" + WEEK[d.getDay()] + "）";
+  }
+  function isPast(key) {
+    var p = key.split("-"), d = new Date(+p[0], +p[1] - 1, +p[2]);
+    var t = new Date(); t = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    return d < t;
+  }
+  function validDate(y, m, d) {
+    var x = new Date(y, m - 1, d);
+    return x.getFullYear() === y && x.getMonth() === m - 1 && x.getDate() === d;
+  }
+  function datesIn(text) {
+    var re = /(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/g, m, out = [];
+    while ((m = re.exec(text))) {
+      var y = +m[1], mo = +m[2], d = +m[3];
+      if (validDate(y, mo, d)) out.push({ key: toKey(y, mo, d), at: m.index });
+    }
+    return out;
+  }
+  function dateAfter(text, label) {
+    var i = text.search(label);
+    if (i < 0) return null;
+    var ds = datesIn(text.slice(i));
+    return ds.length ? ds[0].key : null;
+  }
+
+  /* ---------- メールを読む ----------
+     取り出すのは「種類」「予約番号」「日にち」だけ。
+     名前や電話番号は読まず、どこにも残さない。 */
+  function parse(text) {
+    var t = text.replace(/\r/g, "");
+    var noM = t.match(/予約番号[\s\S]{0,20}?([A-Z]{1,4}\d{6,14})/);
+    var no = noM ? noM[1] : null;
+    // 「予約の変更・キャンセルはこちら」のような案内文に引っかからないよう、言い回しごと見る
+    var kind = null;
+    if (/キャンセル(されました|がありました|を受け付けました|となりました)/.test(t)) kind = "cancel";
+    else if (/変更(されました|がありました|を受け付けました|となりました)/.test(t)) kind = "change";
+    else if (/予約(が入りました|を受け付けました|が確定しました|が完了しました)/.test(t)) kind = "new";
+    if (!kind || !no) return null;
+
+    if (kind === "change") {
+      var after = dateAfter(t, /変更後/);
+      var before = dateAfter(t, /変更前/) || state.bookings[no] || null;
+      if (!after) return null;
+      return { kind: kind, no: no, date: after, from: before };
+    }
+    var ds = datesIn(t);
+    var date = dateAfter(t, /来店日/) || (ds.length ? ds[0].key : null) || (kind === "cancel" ? state.bookings[no] : null);
+    if (!date) return null;
+    return { kind: kind, no: no, date: date };
+  }
+
+  /* ---------- お知らせを作る ---------- */
+  var noticeEl = document.getElementById("notice");
+  var pendingProposal = null;
+
+  function stBadge(s) {
+    var span = document.createElement("span");
+    span.className = "st " + (s ? CLS[s] : "s-none");
+    span.textContent = s ? LABEL[s] : "－ 書いていない";
+    return span;
+  }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function dayPlan(key, delta) {
+    var now = current(key);
+    var n = countOn(key) + delta;
+    if (n < 0) n = 0;
+    var plan = { key: key, now: now, count: n, next: statusFor(n), warn: [] };
+    if (isPast(key)) { plan.warn.push(jp(key) + "はもう過ぎた日です。空き状況は変えません。"); plan.next = now; plan.skip = true; }
+    else if (now === "休み") { plan.warn.push(jp(key) + "は「お休み」になっています。空き状況は「休」のままにします。特別に開ける日なら、availability.js を手で直してください。"); plan.next = now; plan.skip = true; }
+    return plan;
+  }
+
+  function propose(info) {
+    var p = { info: info, days: [], warn: [], kindText: "" };
+    var known = Object.prototype.hasOwnProperty.call(state.bookings, info.no);
+
+    if (info.kind === "new") {
+      p.kindText = "予約が入りました";
+      if (known) return showError("このメールは、もう読みとりずみです。", "同じ予約番号の予約が、すでに記録にあります。");
+      p.days.push(dayPlan(info.date, +1));
+    } else if (info.kind === "cancel") {
+      p.kindText = "キャンセルがありました";
+      if (known) {
+        p.days.push(dayPlan(state.bookings[info.no], -1));
+      } else {
+        p.warn.push("この予約は記録にありません（このしくみを使い始める前の予約かもしれません）。件数は変わらないので、空き状況を自分で確かめてください。");
+        p.days.push(dayPlan(info.date, 0));
+      }
+    } else {
+      p.kindText = "日にちの変更がありました";
+      var from = known ? state.bookings[info.no] : info.from;
+      if (from && from !== info.date) {
+        p.days.push(dayPlan(from, known ? -1 : 0));
+        if (!known) p.warn.push("この予約は記録にありません。変更前の日の件数は変わらないので、空き状況を自分で確かめてください。");
+      }
+      p.days.push(dayPlan(info.date, (from === info.date) ? 0 : +1));
+    }
+    pendingProposal = p;
+    renderProposal(p);
+  }
+
+  function renderProposal(p) {
+    noticeEl.className = "notice";
+    noticeEl.innerHTML = "";
+    noticeEl.appendChild(el("p", "kind", p.kindText));
+    var anyChange = false;
+    p.days.forEach(function (d) {
+      var box = el("div", "");
+      box.appendChild(el("p", "main", jp(d.key) + "（この日の予約：" + d.count + "件）"));
+      var ch = el("p", "change");
+      ch.appendChild(stBadge(d.now));
+      if (!d.skip && d.next !== d.now) {
+        ch.appendChild(el("span", "", "→"));
+        ch.appendChild(stBadge(d.next));
+        anyChange = true;
+      } else if (!d.skip) {
+        ch.appendChild(el("span", "", "のまま（変える必要はありません）"));
+      }
+      box.appendChild(ch);
+      noticeEl.appendChild(box);
+      d.warn.forEach(function (w) { noticeEl.appendChild(el("p", "warn", w)); });
+    });
+    p.warn.forEach(function (w) { noticeEl.appendChild(el("p", "warn", w)); });
+
+    noticeEl.appendChild(el("p", "", anyChange ? "空き状況を変えますか？" : "空き状況は変わりません。記録だけ残しますか？"));
+    var row = el("div", "row");
+    var ok = el("button", "btn btn-small", anyChange ? "OK（変える）" : "OK（記録する）");
+    ok.type = "button";
+    ok.addEventListener("click", function () { decide(true); });
+    var no = el("button", "btn btn-small btn-outline", "変えない");
+    no.type = "button";
+    no.addEventListener("click", function () { decide(false); });
+    row.appendChild(ok); row.appendChild(no);
+    noticeEl.appendChild(row);
+    noticeEl.appendChild(el("p", "hint", "「変えない」を選ぶと、空き状況も件数も何も変わりません。"));
+    ok.focus();
+  }
+
+  function decide(yes) {
+    var p = pendingProposal;
+    if (!p) return;
+    pendingProposal = null;
+    var info = p.info;
+    var summary = [];
+    if (yes) {
+      // 件数の記録
+      if (info.kind === "new") state.bookings[info.no] = info.date;
+      else if (info.kind === "cancel") delete state.bookings[info.no];
+      else state.bookings[info.no] = info.date;
+      // 空き状況
+      p.days.forEach(function (d) {
+        if (!d.skip && d.next !== d.now) {
+          if (fileData[d.key] === d.next) delete state.changes[d.key];
+          else state.changes[d.key] = d.next;
+          summary.push(jp(d.key) + " を " + LABEL[d.next] + " に");
+        }
+      });
+    }
+    addLog(p.kindText + "：" + p.days.map(function (d) { return jp(d.key); }).join(" → ") +
+      "　" + (yes ? (summary.length ? summary.join("、") + "変えました" : "記録しました") : "変えませんでした"));
+    save();
+    renderAll();
+    noticeEl.className = "notice done";
+    noticeEl.innerHTML = "";
+    noticeEl.appendChild(el("p", "main", yes ? (summary.length ? "変更しました" : "記録しました") : "何も変えませんでした"));
+    if (yes && summary.length) noticeEl.appendChild(el("p", "", summary.join("、") + "変えました。③のボタンでホームページに反映してください。"));
+  }
+
+  function showError(title, body) {
+    pendingProposal = null;
+    noticeEl.className = "notice error";
+    noticeEl.innerHTML = "";
+    noticeEl.appendChild(el("p", "main", title));
+    noticeEl.appendChild(el("p", "", body));
+    noticeEl.appendChild(el("p", "hint", "空き状況は何も変えていません。"));
+  }
+
+  /* ---------- 記録 ---------- */
+  function addLog(text) {
+    var t = new Date();
+    state.log.unshift({ at: t.getFullYear() + "/" + pad(t.getMonth() + 1) + "/" + pad(t.getDate()) + " " + pad(t.getHours()) + ":" + pad(t.getMinutes()), text: text });
+    state.log = state.log.slice(0, 30);
+  }
+
+  /* ---------- 画面の更新 ---------- */
+  var pendingEl = document.getElementById("pending");
+  var logEl = document.getElementById("log");
+  var dlBtn = document.getElementById("download");
+
+  function renderAll() {
+    pendingEl.innerHTML = "";
+    var keys = Object.keys(state.changes).sort();
+    if (!keys.length) pendingEl.appendChild(el("li", "empty-text", "まだ反映していない変更はありません。"));
+    keys.forEach(function (k) {
+      var li = el("li", "");
+      li.appendChild(el("span", "date", jp(k)));
+      li.appendChild(stBadge(fileData[k]));
+      li.appendChild(el("span", "", "→"));
+      li.appendChild(stBadge(state.changes[k]));
+      li.appendChild(el("span", "grow", ""));
+      var undo = el("button", "linkish", "取り消す");
+      undo.type = "button";
+      undo.setAttribute("aria-label", jp(k) + "の変更を取り消す");
+      undo.addEventListener("click", function () {
+        delete state.changes[k];
+        addLog(jp(k) + " の変更を取り消しました");
+        save(); renderAll();
+      });
+      li.appendChild(undo);
+      pendingEl.appendChild(li);
+    });
+    dlBtn.disabled = !keys.length;
+
+    logEl.innerHTML = "";
+    if (!state.log.length) logEl.appendChild(el("li", "empty-text", "まだ記録はありません。"));
+    state.log.forEach(function (r) {
+      var li = el("li", "");
+      li.appendChild(el("span", "time", r.at));
+      li.appendChild(el("span", "grow", r.text));
+      logEl.appendChild(li);
+    });
+
+    var nums = Object.keys(state.bookings).length;
+    document.getElementById("count-summary").textContent = "いま数えている予約：" + nums + "件";
+  }
+
+  /* ---------- availability.js を作って保存 ---------- */
+  var HEADER = [
+    "/*",
+    "  ================================================================",
+    "   空き状況の書き方（オーナーさん用）",
+    "  ================================================================",
+    "   1日につき1行、下の { } の中に書いてください。",
+    "",
+    "     \"2026-12-05\": \"空き\",",
+    "",
+    "   ・左の \"  \" の中は日付（年-月-日）。月と日は2けたで書きます。",
+    "       例）12月5日 → \"2026-12-05\"　　1月9日 → \"2027-01-09\"",
+    "   ・右の \"  \" の中は、次の4つのどれかを書きます。",
+    "       \"空き\"        … ◎ 予約できます",
+    "       \"残りわずか\"  … △ あと少しだけ空いています",
+    "       \"満席\"        … × 予約がいっぱい",
+    "       \"休み\"        … 休 お休みの日",
+    "   ・行の最後の「,」（カンマ）を忘れないでください。",
+    "   ・書いていない日は「ホットペッパーでご確認ください」と表示されます。",
+    "   ・過ぎた日は、書いてあっても自動で押せなくなります。消さなくて大丈夫です。",
+    "",
+    "   ※ このファイルは「予約の管理（admin.html）」でも作れます。",
+    "  ================================================================",
+    "*/"
+  ].join("\n");
+
+  function buildFile() {
+    var merged = {};
+    Object.keys(fileData).forEach(function (k) { merged[k] = fileData[k]; });
+    Object.keys(state.changes).forEach(function (k) { merged[k] = state.changes[k]; });
+    var lines = Object.keys(merged).sort().map(function (k) {
+      return "  " + JSON.stringify(k) + ": " + JSON.stringify(merged[k]) + ",";
+    });
+    return HEADER + "\nwindow.AVAILABILITY = {\n" + lines.join("\n") + "\n};\n\n" +
+      "/*\n  ホットペッパーの店舗ページのURL。\n  実際のお店のページのURLに書きかえてください（\" \" の中だけ）。\n*/\n" +
+      "window.HOTPEPPER_URL = " + JSON.stringify(hotpepperUrl) + ";\n";
+  }
+
+  dlBtn.addEventListener("click", function () {
+    var blob = new Blob([buildFile()], { type: "text/javascript;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "availability.js";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    addLog("新しい availability.js を保存しました");
+    save(); renderAll();
+  });
+
+  /* ---------- ボタン ---------- */
+  var mailEl = document.getElementById("mail");
+  document.getElementById("read").addEventListener("click", function () {
+    var text = mailEl.value;
+    mailEl.value = "";   // メールの文章はすぐに消す（どこにも残さない）
+    if (!text.trim()) return showError("メールが貼りつけられていません。", "上の四角に、メールの文章を貼りつけてから「読みとる」を押してください。");
+    var info = parse(text);
+    if (!info) return showError("読めませんでした。", "予約・キャンセル・日にち変更のメールとして読みとれませんでした。予約番号と来店日がメールに入っているか確かめてください。");
+    propose(info);
+  });
+  document.getElementById("clear").addEventListener("click", function () { mailEl.value = ""; mailEl.focus(); });
+
+  var fewIn = document.getElementById("few"), fullIn = document.getElementById("full");
+  fewIn.value = state.few; fullIn.value = state.full;
+  function onSetting() {
+    var f = Math.max(1, parseInt(fewIn.value, 10) || 1);
+    var u = Math.max(f, parseInt(fullIn.value, 10) || f);
+    state.few = f; state.full = u;
+    fewIn.value = f; fullIn.value = u;
+    save();
+  }
+  fewIn.addEventListener("change", onSetting);
+  fullIn.addEventListener("change", onSetting);
+
+  document.getElementById("reset").addEventListener("click", function () {
+    if (!confirm("数えている予約、まだ反映していない変更、記録をぜんぶ消します。よろしいですか？")) return;
+    state.bookings = {}; state.changes = {}; state.log = [];
+    save(); renderAll();
+    noticeEl.className = "notice empty";
+    noticeEl.textContent = "記録をぜんぶ消しました。";
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
