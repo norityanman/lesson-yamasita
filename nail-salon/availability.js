@@ -58,3 +58,9 @@ window.AVAILABILITY = {
   実際のお店のページのURLに書きかえてください（" " の中だけ）。
 */
 window.HOTPEPPER_URL = "https://beauty.hotpepper.jp/";
+
+/*
+  予約の締め切り：前の日の何時まで受け付けるか（0〜23 の数字）。
+  例）18 → 前の日の18時ちょうどで、その日の予約を締め切ります。
+*/
+window.CUTOFF_HOUR = 18;

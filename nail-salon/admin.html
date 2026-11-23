@@ -113,8 +113,24 @@ textarea:focus-visible,.admin button:focus-visible,.admin input:focus-visible{ou
           <label>× 満席：<input type="number" id="full" min="1" max="20">件から</label>
         </div>
         <p class="hint" id="count-summary"></p>
+        <p class="hint">予約の締め切り：<strong>前の日の<span id="cutoff-hour">18</span>時</strong>（変えるときは availability.js の <code>CUTOFF_HOUR</code> を書きかえます）</p>
         <div class="row">
           <button type="button" class="linkish danger" id="reset">記録をぜんぶ消す</button>
+        </div>
+      </div>
+
+      <div class="card panel">
+        <h3><span class="step">6</span>練習用：いまの日時を決めてためす</h3>
+        <p class="hint">締め切りなどを、本当の時刻を待たずにためせます。日時を決めてボタンを押すと、その日時ということにしてページが開きます。本当の時刻やお客様の画面は変わりません。</p>
+        <div class="settings">
+          <label>いまの日時：<input type="datetime-local" id="practice-at" style="width:auto"></label>
+        </div>
+        <div class="row">
+          <button type="button" class="btn btn-small" id="practice-reserve">この日時で空き状況ページを開く</button>
+          <button type="button" class="btn btn-small btn-outline" id="practice-admin">この日時で管理ページを開く</button>
+        </div>
+        <div class="row">
+          <button type="button" class="linkish" id="practice-stop" hidden>練習をやめて、本当の時刻にもどす</button>
         </div>
       </div>
     </div>
@@ -122,12 +138,14 @@ textarea:focus-visible,.admin button:focus-visible,.admin input:focus-visible{ou
 </main>
 
 <script src="availability.js"></script>
+<script src="salon-time.js"></script>
 <script>
 (function () {
   "use strict";
 
   /* ---------- 保存（このパソコンのブラウザの中だけ） ---------- */
-  var KEY = "nailSalonAdmin.v1";
+  // 練習モードのときは、本物の記録とまざらないよう別の場所に残す
+  var KEY = SalonTime.practice ? "nailSalonAdmin.v1.practice" : "nailSalonAdmin.v1";
   function load() {
     try {
       var s = JSON.parse(localStorage.getItem(KEY));
@@ -180,10 +198,13 @@ textarea:focus-visible,.admin button:focus-visible,.admin input:focus-visible{ou
     var p = key.split("-"), d = new Date(+p[0], +p[1] - 1, +p[2]);
     return (+p[1]) + "月" + (+p[2]) + "日（" + WEEK[d.getDay()] + "）";
   }
+  function dateOf(key) {
+    var p = key.split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2]);
+  }
   function isPast(key) {
-    var p = key.split("-"), d = new Date(+p[0], +p[1] - 1, +p[2]);
-    var t = new Date(); t = new Date(t.getFullYear(), t.getMonth(), t.getDate());
-    return d < t;
+    var t = SalonTime.now(); t = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    return dateOf(key) < t;
   }
   function validDate(y, m, d) {
     var x = new Date(y, m - 1, d);
@@ -254,6 +275,9 @@ textarea:focus-visible,.admin button:focus-visible,.admin input:focus-visible{ou
     var plan = { key: key, now: now, count: n, next: statusFor(n), warn: [] };
     if (isPast(key)) { plan.warn.push(jp(key) + "はもう過ぎた日です。空き状況は変えません。"); plan.next = now; plan.skip = true; }
     else if (now === "休み") { plan.warn.push(jp(key) + "は「お休み」になっています。空き状況は「休」のままにします。特別に開ける日なら、availability.js を手で直してください。"); plan.next = now; plan.skip = true; }
+    else if (delta > 0 && SalonTime.isClosed(dateOf(key))) {
+      plan.warn.push(jp(key) + "は、もう予約の締め切り（前の日の" + SalonTime.cutoffHour() + "時）を過ぎた日です。ホームページでは受付を終えている日なので、念のため予約の内容を確かめてください。");
+    }
     return plan;
   }
 
@@ -446,7 +470,9 @@ textarea:focus-visible,.admin button:focus-visible,.admin input:focus-visible{ou
     });
     return HEADER + "\nwindow.AVAILABILITY = {\n" + lines.join("\n") + "\n};\n\n" +
       "/*\n  ホットペッパーの店舗ページのURL。\n  実際のお店のページのURLに書きかえてください（\" \" の中だけ）。\n*/\n" +
-      "window.HOTPEPPER_URL = " + JSON.stringify(hotpepperUrl) + ";\n";
+      "window.HOTPEPPER_URL = " + JSON.stringify(hotpepperUrl) + ";\n\n" +
+      "/*\n  予約の締め切り：前の日の何時まで受け付けるか（0〜23 の数字）。\n  例）18 → 前の日の18時ちょうどで、その日の予約を締め切ります。\n*/\n" +
+      "window.CUTOFF_HOUR = " + SalonTime.cutoffHour() + ";\n";
   }
 
   dlBtn.addEventListener("click", function () {
@@ -492,6 +518,31 @@ textarea:focus-visible,.admin button:focus-visible,.admin input:focus-visible{ou
     noticeEl.className = "notice empty";
     noticeEl.textContent = "記録をぜんぶ消しました。";
   });
+
+  /* ---------- 締め切りの表示と練習用の切りかえ ---------- */
+  document.getElementById("cutoff-hour").textContent = SalonTime.cutoffHour();
+  SalonTime.showPracticeBanner();
+  var practiceIn = document.getElementById("practice-at");
+  (function () {
+    var d = SalonTime.now();
+    practiceIn.value = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  })();
+  function practiceUrl(page) {
+    var v = practiceIn.value;
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) { alert("日にちと時刻を入れてください。"); return null; }
+    return page + "?now=" + v;
+  }
+  document.getElementById("practice-reserve").addEventListener("click", function () {
+    var u = practiceUrl("reserve.html"); if (u) window.open(u, "_blank");
+  });
+  document.getElementById("practice-admin").addEventListener("click", function () {
+    var u = practiceUrl("admin.html"); if (u) location.href = u;
+  });
+  var stopBtn = document.getElementById("practice-stop");
+  if (SalonTime.practice) {
+    stopBtn.hidden = false;
+    stopBtn.addEventListener("click", function () { location.href = "admin.html"; });
+  }
 
   renderAll();
 })();

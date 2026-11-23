@@ -144,6 +144,12 @@ h1,h2,h3,p{margin:0}
 .cal-day.s-past{border-color:transparent;background:transparent}
 .cal-day.s-past .num{color:#A0958A}
 .cal-day.is-today{box-shadow:inset 0 0 0 2px var(--gold)}
+.cal-day.s-closed .num{color:#A0958A}
+.cal-day.s-closed .mark,.mark.s-closed{font-size:11px;font-weight:700;color:#6B6258;letter-spacing:.05em}
+.cal-legend .mark.s-closed{padding:1px 6px;border:1px solid var(--line);border-radius:6px}
+
+/* 練習モードのお知らせ（練習中だけ出る） */
+.practice-banner{position:sticky;top:0;z-index:10;background:#2F4F6B;color:#fff;font-size:14px;font-weight:700;text-align:center;padding:10px 16px;line-height:1.5}
 
 .cal-picked{padding:28px 24px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
 .picked-empty{color:var(--sub);font-size:15px}
